@@ -40,9 +40,9 @@ def Whippet(Config):
         for Item in Sync.split(","):
           Item=Item.strip()
           if Item.startswith("ahead "):
-            Ahead=int(Item[6:])
+            Ahead=Item[6:].strip()
           elif Item.startswith("behind "):
-            Behind=int(Item[8:])
+            Behind=Item[7:].strip()
 
     #File line (XY status codes: UU, AU, UA, DU, UD are conflict states)
     else:
@@ -60,9 +60,9 @@ def Whippet(Config):
   if Modified:
     Info+=":"+str(Modified)+"*"
   if Behind:
-    Info+=":"+str(Behind)+"<<"
+    Info+=":"+Behind+"<<"
   if Ahead:
-    Info+=":"+str(Ahead)+">>"
+    Info+=":"+Ahead+">>"
   Info="("+Info+")"
 
   #Set color based on status
