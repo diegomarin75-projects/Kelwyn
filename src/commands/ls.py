@@ -83,13 +83,13 @@ def Execute(Options,Config):
         ListPath=os.path.join(Root,Dir)+os.sep
         if fnmatch.fnmatch(Dir, FilePattern):
           if Options.ListHidden or not Dir.startswith("."):
-            if Options.ListForbidden or utils.IsAccessible(ListPath):
+            if Options.ListForbidden or utils.IsAccessible(ListPath,QuickMode=True):
               FileList.append(Dir+os.sep)
       for File in Files:
         ListPath=os.path.join(Root,File)
         if fnmatch.fnmatch(File,FilePattern):
           if Options.ListHidden or not File.startswith("."):
-            if Options.ListForbidden or utils.IsAccessible(ListPath):
+            if Options.ListForbidden or utils.IsAccessible(ListPath,QuickMode=True):
               FileList.append(File)
       
       #Continue if no files or directories found
