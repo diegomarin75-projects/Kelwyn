@@ -1,0 +1,17 @@
+--- Kelwyn lang project notes file ---
+
+# Open tasks:
+2026-06-04_064855 : Create command store to store command line on history (for auto-completion and history navigation)
+2026-06-04_065106 : Create a history persistent file that is never cleared.
+2026-06-06_234409 : Create a gobal configuration file to set: default prompt, colors and default init script
+2026-06-06_234452 : Implemeny python: statement in script mode
+2026-06-06_234811 : Implement line and inline comments
+
+# Completed tasks:
+[DONE] 2026-06-02_072907 : Paste with selection active does not overwrite selected text
+[DONE] 2026-06-02_072936 : Typing with selection active does not overwrite selected text
+[DONE] 2026-06-10_074112 : Use this single command to speed up the git info whippet as it gives all: git status --porcelain=v1 --branch --ahead-behind --untracked-files=all
+[DONE] 2026-06-02_062833 : Must pass current environment variables when executting external processes
+[DONE] 2026-05-26_071902 : Problem in parser, cannot escape quotes with backslash as it is causing conflict with windows dir separator. 
+                           Must use repeated quotes to escape them. Implementation is not corect! Review quotes is parsed correctly inside a string
+
