@@ -1,6 +1,10 @@
 --- Kelwyn lang project notes file ---
 
 # Open tasks:
+2026-06-11_210712 : Implement execute process in background &
+2026-06-11_210934 : Implement multiple command execution ;
+2026-06-11_211056 : Implement ps and kill commands
+2026-06-11_211101 : Implement redirection and pipe operators
 2026-06-04_064855 : Create command store to store command line on history (for auto-completion and history navigation)
 2026-06-04_065106 : Create a history persistent file that is never cleared.
 2026-06-06_234409 : Create a gobal configuration file to set: default prompt, colors and default init script
