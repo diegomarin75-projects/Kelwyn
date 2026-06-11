@@ -49,7 +49,7 @@ def Completer(Token,Config,DirsOnly=False):
     debug.Get().Send(f"Completions: {Completions!r}")
 
     #Filter out inaccessible paths (e.g. due to permissions)
-    Completions=[Comp for Comp in Completions if utils.IsAccessible(Comp)]
+    Completions=[Comp for Comp in Completions if utils.IsAccessible(Comp,QuickMode=True)]
     
     #Remove .\ or ./ at beginning of completions for better display
     Completions=[Comp[2:] if Comp.startswith("."+os.sep) else Comp for Comp in Completions]

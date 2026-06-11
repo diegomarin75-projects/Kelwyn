@@ -67,10 +67,11 @@ def JsonFileParser(FilePath):
 # Checks file path is accessible
 # Args:
 # - FilePath (string): File or directory path to check
+# - QuickMode (bool): Does not check actual access for files only folders (much quicker)
 # Returns:
 # - bool: True if the path is accessible (can be read), False if not accessible (e.g. due to permissions)
 # ---------------------------------------------------------------------------
-def IsAccessible(FilePath):
+def IsAccessible(FilePath,QuickMode=False):
   if FilePath.endswith(os.sep):
     try:
       os.listdir(FilePath)
@@ -78,12 +79,15 @@ def IsAccessible(FilePath):
     except PermissionError:
       return False
   else:
-    try:
-      with open(FilePath,"rb"):
-        pass
+    if QuickMode==True:
       return True
-    except PermissionError:
-      return False
+    else:
+      try:
+        with open(FilePath,"rb"):
+          pass
+        return True
+      except PermissionError:
+        return False
 
 # ---------------------------------------------------------------------------
 # Execute a command and return its output and return code
