@@ -12,6 +12,8 @@ import debug
 import utils
 import parser
 import evaluator
+import threading
+import terminal
 from pathlib import Path
 from contextlib import redirect_stdout, redirect_stderr
 
@@ -253,10 +255,22 @@ class CommandDispatcher:
     #Debug message
     debug.Get().Send(f"Executing command: {Command} (Redirect={Redirect})")
     
+    #Get command
+    Cmd=Command.strip()
+    
+    #Detect command execution in background
+    if Cmd.endswith(" &"):
+      if Redirect==True:
+        Message=f"Cannot launch process in background and redirected at the same time ({Command})"
+        return DispatcherResult.DispatcherError(Message)
+      Cmd=Cmd[:-2].strip()
+      Background=True
+    else:
+      Background=False
+
     #Replace in command all environment variables like {{name}} with their value from environment
     #Vaiables not found in environment are not replaced and are left as they are in the command string
     Index=0
-    Cmd=Command
     while True:
       FoundPos=Cmd.find("{{",Index)
       if FoundPos==-1:
@@ -281,11 +295,19 @@ class CommandDispatcher:
     
     #Pass-through command execution to system when it starts by $
     if Cmd.strip().startswith("$"):
-      RetCode,Output=utils.Exec(Cmd[1:],Redirect=Redirect)
-      if RetCode==0:
-        return DispatcherResult.Ok(Output)
+      if Background==False:
+        RetCode,Output=utils.Exec(Cmd[1:],Redirect=Redirect)
+        if RetCode==0:
+          return DispatcherResult.Ok(Output)
+        else:
+          return DispatcherResult.ExternalError(RetCode,Output)
       else:
-        return DispatcherResult.ExternalError(RetCode,Output)
+        RetCode,Pid=utils.Exec(Cmd[1:],Redirect=False,Detached=True)
+        if RetCode==0:
+          terminal.Write(f"Process launched in backgrpund (pid={Pid})")
+          return DispatcherResult.Ok()
+        else:
+          return DispatcherResult.DispatcherError(RetCode,Output)
     
     #Find most inner built-in function calls and execute
     while True:
@@ -316,11 +338,19 @@ class CommandDispatcher:
     
     #Pass-through command execution to system when command is not implemented
     if Tool not in self.CommandDir and Tool!="help":
-      RetCode,Output=utils.Exec(Cmd,Redirect=Redirect)
-      if RetCode==0:
-        return DispatcherResult.Ok(Output)
+      if Background==False:
+        RetCode,Output=utils.Exec(Cmd,Redirect=Redirect)
+        if RetCode==0:
+          return DispatcherResult.Ok(Output)
+        else:
+          return DispatcherResult.ExternalError(RetCode,Output)
       else:
-        return DispatcherResult.ExternalError(RetCode,Output)
+        RetCode,Pid=utils.Exec(Cmd,Redirect=False,Detached=True)
+        if RetCode==0:
+          terminal.Write(f"Process launched in backgrpund (pid={Pid})")
+          return DispatcherResult.Ok()
+        else:
+          return DispatcherResult.DispatcherError(RetCode,Output)
     
     #Parse command
     Status,Message,Tokens=self.Parser.Parse(Cmd)
@@ -379,6 +409,16 @@ class CommandDispatcher:
           return DispatcherResult.CommandError(Output)
         else:
           return DispatcherResult.Ok(Output)
+      
+      #Execute in background
+      elif Background==True:
+        BackgroundCmd=f"python {__file__} --config {self.Config["config_file_path"]} --skip-init --command \"{Cmd}\""
+        RetCode,Pid=utils.Exec(BackgroundCmd,Redirect=False,Detached=True)
+        if RetCode==0:
+          terminal.Write(f"Process launched in backgrpund (pid={Pid})")
+          return DispatcherResult.Ok()
+        else:
+          return DispatcherResult.DispatcherError(RetCode,Output)
       
       #Normal execution
       else:

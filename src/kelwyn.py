@@ -24,9 +24,9 @@ def Main():
   ArgParser.add_argument("--history",dest="HistoryFile",type=str,metavar="PATH",help="Path to history file (default: same directory as python script)",default=None)
   ArgParser.add_argument("--debug-log",dest="DebugLogFile",type=str,metavar="PATH",help="Path to debug log file (default: same directory as python script)",default=None)
   ArgParser.add_argument("--skip-init",dest="SkipInit",action="store_true",help="Skip the init script (use with --run or --command)",default=False)
-  ArgParser.add_argument("--init-command",dest="InitCommand",type=str,metavar="CMD",help="Command to execute at startup (use with --run)",default="")
-  ArgParser.add_argument("--init-script",dest="InitScript",type=str,metavar="PATH",help="Path to init script to execute at startup (use with --run)",default="")
-  ArgParser.add_argument("--command",dest="Command",type=str,metavar="CMD",help="Execute a command and exit (command is parsed as other shell commands)",default="")
+  ArgParser.add_argument("--init-command",dest="InitCommand",type=str,metavar="CMD",help="Command to execute at startup (use with --run)",default=None)
+  ArgParser.add_argument("--init-script",dest="InitScript",type=str,metavar="PATH",help="Path to init script to execute at startup (use with --run)",default=None)
+  ArgParser.add_argument("--command",dest="Command",type=str,metavar="CMD",help="Execute a command and exit (command is parsed as other shell commands)",default=None)
   Args=ArgParser.parse_args()
   
   #If no arguments provided,print help and exit
@@ -41,7 +41,6 @@ def Main():
     ConfigFile=os.environ[const.CONFIG_VAR_NAME]
   else:
     ConfigFile=Path(os.path.dirname(os.path.abspath(__file__))).parent / "cfg" / const.CONFIG_FILE
-  print(f"Reading config file {ConfigFile} ...")
 
   #Load config file
   Status,Message,Config=utils.JsonFileParser(ConfigFile)
@@ -83,7 +82,7 @@ def Main():
   #Init terminal mode, call shell
   try:
     terminal.SetRawTerminalMode()
-    Sh=shell.Shell(Args.SkipInit,Args.InitCommand,Args.InitScript,const.VERSION,CommandsFolder,CompletersFolder,WhippetsFolder,HistoryFile,MaxHistoryCommands,Config)
+    Sh=shell.Shell(Args.Command,Args.SkipInit,Args.InitCommand,Args.InitScript,const.VERSION,CommandsFolder,CompletersFolder,WhippetsFolder,HistoryFile,MaxHistoryCommands,Config)
     Sh.Run()
   finally:
     terminal.RestoreTerminalMode()

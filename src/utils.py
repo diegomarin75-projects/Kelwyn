@@ -94,12 +94,13 @@ def IsAccessible(FilePath,QuickMode=False):
 # Args:
 # - Command (string): Command to execute as a string
 # - Redirect (bool, default False): Whether to capture and return command output (stdout and stderr combined)
+# - Detached (bool, default False): Whether to launch process as detached
 # - Timeout (float, default None): Timeout in seconds for command execution, or None for no timeout
 # Returns:
 # - int: Command return code (0 for success, -1 Keyboard interrupt, -2 Timeout, >0 Error)
-# - string: Command output (stdout and stderr combined) (when Redirect is True, otherwise None)
+# - string: Command output when Redirect is True, Process Pid when Detached is True, else None
 # ---------------------------------------------------------------------------
-def Exec(Command,Redirect=True,Timeout=None):
+def Exec(Command,Redirect=True,Detached=False,Timeout=None):
   try:
     if Redirect==True:
       Proc=subprocess.Popen(Command,shell=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,encoding="utf-8")
@@ -114,11 +115,17 @@ def Exec(Command,Redirect=True,Timeout=None):
         Output=Proc.communicate()[0]
       ReturnCode=Proc.returncode
       return ReturnCode,Output
+    elif Detached==True:
+      Proc=subprocess.Popen(Command,shell=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,stdin=subprocess.DEVNULL,start_new_session=True)
+      return 0,str(Proc.pid)
     else:
       ReturnCode=subprocess.call(Command,shell=True,encoding="utf-8")
       return ReturnCode,None
   except KeyboardInterrupt:
     Output=("Command execution interrupted by user" if Redirect else None)
+    return -1,Output
+  except Exception as Ex:
+    Output=f"Command execution exception: {Ex}"
     return -1,Output
 
 # -------------------------------------------------------------------------

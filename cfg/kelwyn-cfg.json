@@ -34,7 +34,7 @@
   "global_file_color":"#7F7F7F",
   "global_dir_header_color":"#FF7F7F",
   "git_clean_color":"#FF5555",
-  "git_dirty_color":"#FF00FF",
+  "git_dirty_color":"#FF50FF",
   "git_conflict_color":"#FFFF00",
   "git_branch_color":"#909090",
   "beta_mode_color":"#00FFFF"

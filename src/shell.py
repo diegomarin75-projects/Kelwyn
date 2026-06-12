@@ -30,8 +30,9 @@ class Shell:
   # - Config (dict): JSON Configuration file
   # Returns: None
   # -------------------------------------------------------------------------
-  def __init__(self,SkipInit,InitCommand,InitScript,Version,CommandsFolder,CompletersFolder,WhippetsFolder,HistoryFile,MaxHistoryCommands,Config):
+  def __init__(self,Command,SkipInit,InitCommand,InitScript,Version,CommandsFolder,CompletersFolder,WhippetsFolder,HistoryFile,MaxHistoryCommands,Config):
     self.Config=Config
+    self.Command=Command
     self.SkipInit=SkipInit
     self.InitCommand=InitCommand
     self.InitScript=InitScript
@@ -111,13 +112,13 @@ class Shell:
     CommandBoxHeight=(terminal.GetTerminalSize()[0]-2 if CommandBoxHeight>terminal.GetTerminalSize()[0]-2 else CommandBoxHeight)
 
     #Init command execution
-    if len(self.InitCommand)!=0:
+    if self.InitCommand!=None:
       Result=self.Dispatcher.ExecuteCommand(self.InitCommand)
       if Result.Event==dispatcher.DispatcherResult.TERMINATE:
         return
     
     #Initial script execution
-    if len(self.InitScript)!=0:
+    if self.InitScript!=None:
       try:
         Lines=open(self.InitScript,"r").read().splitlines()
         Result=self.Dispatcher.ExecuteScript(Lines)
@@ -130,6 +131,11 @@ class Shell:
       Result=self.Dispatcher.ExecuteScript(Commands)
       if Result.Event!=dispatcher.DispatcherResult.OK:
         terminal.Write(ansi.SetRgb(ErrorMessageColor)+f"Init error: {Result.Output}"+ansi.ResetColor()+"\n")
+    
+    #Execution for single command
+    if self.Command!=None:
+      Result=self.Dispatcher.ExecuteCommand(self.Command)
+      return
 
     #Write initial prompt
     terminal.Write(self.Prompt.Get())
