@@ -64,7 +64,11 @@ class PromptBuilder:
     #Replace whippets in prompt
     for Whippet in self.Whippets:
       if Prompt.find("<"+Whippet+">")!=-1:
-        Prompt=Prompt.replace("<"+Whippet+">",self.Whippets[Whippet](self.Config))
+        try:
+          Value=self.Whippets[Whippet](self.Config)
+        except Exception as Ex:
+          Value=Whippet+"!"
+        Prompt=Prompt.replace("<"+Whippet+">",Value)
 
     #Replace {%code%} by ANSI escape sequence
     if Prompt.find("{%")!=-1:
