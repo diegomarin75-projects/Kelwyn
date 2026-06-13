@@ -1,7 +1,6 @@
 --- Kelwyn lang project notes file ---
 
 # Open tasks:
-2026-06-13_210934 : Implement unified color settings routine so rgb or terminal color can be set same way
 2026-06-11_210934 : Implement multiple command execution ;
 2026-06-11_211056 : Implement ps and kill commands
 2026-06-11_211101 : Implement redirection and pipe operators
