@@ -11,7 +11,7 @@ def Whippet(Config):
   
   #Calculate beta tag
   if Path(__file__).parent.parent.parent.name.lower()=="beta":
-    Beta=ansi.SetRgb(BetaModeColor)+" (beta)"+ansi.ResetColor()
+    Beta=ansi.SetFgColor(BetaModeColor)+" (beta)"+ansi.ResetColor()
   else:
     Beta=""
 

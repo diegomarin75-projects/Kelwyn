@@ -2,10 +2,6 @@
 # ansi.py: ANSI escape sequences
 # ---------------------------------------------------------------------------------------------------------------------
 
-# Functions in ths library:
-# - AnsiColor(FgColor,BkColor=None): Returns ANSI escape sequence for given foreground and background colors.
-# - Seq=QueryCursorPos()               #Returns DSR sequence; terminal replies with \x1b[row;colR
-
 # ---------------------------------------------------------------------------------------------------------------------
 # Import libraries
 # ---------------------------------------------------------------------------------------------------------------------
@@ -35,15 +31,64 @@ _SHOW_CURSOR      =_ESCAPE_PREFIX+"?25h"
 # ---------------------------------------------------------------------------------------------------------------------
 # ANSI color codes
 # ---------------------------------------------------------------------------------------------------------------------
-FD_BLACK  =30; BD_BLACK  =40; FB_BLACK  =90; BB_BLACK  =100;
-FD_RED    =31; BD_RED    =41; FB_RED    =91; BB_RED    =101;
-FD_GREEN  =32; BD_GREEN  =42; FB_GREEN  =92; BB_GREEN  =102;
-FD_YELLOW =33; BD_YELLOW =43; FB_YELLOW =93; BB_YELLOW =103;
-FD_BLUE   =34; BD_BLUE   =44; FB_BLUE   =94; BB_BLUE   =104;
-FD_MAGENTA=35; BD_MAGENTA=45; FB_MAGENTA=95; BB_MAGENTA=105;
-FD_CYAN   =36; BD_CYAN   =46; FB_CYAN   =96; BB_CYAN   =106;
-FD_WHITE  =37; BD_WHITE  =47; FB_WHITE  =97; BB_WHITE  =107;
-REVERSED  = 7; BOLD      = 1; UNDERLINE = 4;
+ANSI_COLORS={
+  "dark_black"    :{"foreground":30,"background":40 }, ##000000
+  "dark_red"      :{"foreground":31,"background":41 }, ##7F0000
+  "dark_green"    :{"foreground":32,"background":42 }, ##007F00
+  "dark_yellow"   :{"foreground":33,"background":43 }, ##7F7F00
+  "dark_blue"     :{"foreground":34,"background":44 }, ##00007F
+  "dark_magenta"  :{"foreground":35,"background":45 }, ##7F007F
+  "dark_cyan"     :{"foreground":36,"background":46 }, ##007F7F
+  "dark_white"    :{"foreground":37,"background":47 }, ##7F7F7F
+  "bright_black"  :{"foreground":90,"background":100}, ##7F7F7F
+  "bright_red"    :{"foreground":91,"background":101}, ##FF0000
+  "bright_green"  :{"foreground":92,"background":102}, ##00FF00
+  "bright_yellow" :{"foreground":93,"background":103}, ##FFFF00
+  "bright_blue"   :{"foreground":94,"background":104}, ##0000FF
+  "bright_magenta":{"foreground":95,"background":105}, ##FF00FF
+  "bright_cyan"   :{"foreground":96,"background":106}, ##00FFFF
+  "bright_white"  :{"foreground":97,"background":107}, ##FFFFFF
+}
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Return ANSI escape sequence to set foreground color
+# Args:
+# - Color (string): Foreground color code (from ANSI_COLORS), or HEX value in format #RRGGBB
+# Returns:
+# - string: ANSI escape sequence for the specified color
+# ---------------------------------------------------------------------------------------------------------------------
+def SetFgColor(Color):
+  if Color in ANSI_COLORS:
+    return f"{_ESCAPE_PREFIX}{ANSI_COLORS[Color]["foreground"]}m"
+  elif re.match(r'^#[0-9a-fA-F]{6}$',Color):
+    RedColorDecimal=int(Color[1:3],16)
+    GreenColorDecimal=int(Color[3:5],16)
+    BlueColorDecimal=int(Color[5:7],16)
+    RgbColor=f"{RedColorDecimal};{GreenColorDecimal};{BlueColorDecimal}"
+    return f"{_ESCAPE_PREFIX}38;2;{RgbColor}m"
+  else:
+    raise ValueError(f"Invalid color specification ({Color})")
+  return None
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Return ANSI escape sequence to set foreground color
+# Args:
+# - Color (string): Foreground color code (from ANSI_COLORS), or HEX value in format #RRGGBB
+# Returns:
+# - string: ANSI escape sequence for the specified color
+# ---------------------------------------------------------------------------------------------------------------------
+def SetBkColor(Color):
+  if Color in ANSI_COLORS:
+    return f"{_ESCAPE_PREFIX}{ANSI_COLORS[Color]["background"]}m"
+  elif re.match(r'^#[0-9a-fA-F]{6}$',Color):
+    RedColorDecimal=int(Color[1:3],16)
+    GreenColorDecimal=int(Color[3:5],16)
+    BlueColorDecimal=int(Color[5:7],16)
+    RgbColor=f"{RedColorDecimal};{GreenColorDecimal};{BlueColorDecimal}"
+    return f"{_ESCAPE_PREFIX}48;2;{RgbColor}m"
+  else:
+    raise ValueError(f"Invalid color specification ({Color})")
+  return None
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Return ANSI escape sequence to clear the screen
@@ -109,39 +154,6 @@ def Scroll(Lines):
   else:
     return ""
     
-# ---------------------------------------------------------------------------------------------------------------------
-# Return ANSI escape sequence for a standard foreground/background color
-# Args:
-# - FgColor (int or None): Foreground color code (ANSI color constant), or None for default
-# - BkColor (int, default None): Background color code (ANSI color constant), or None for no background
-# Returns:
-# - string: ANSI escape sequence for the specified color
-# ---------------------------------------------------------------------------------------------------------------------
-def SetColor(FgColor,BkColor=None):
-  FgStr=("0" if FgColor is None else str(FgColor))
-  BkStr=(";"+str(BkColor) if BkColor is not None else "")
-  return f"{_ESCAPE_PREFIX}{FgStr}{BkStr}m"
-
-# ---------------------------------------------------------------------------------------------------------------------
-# Return ANSI escape sequence for a 24-bit RGB color
-# Args:
-# - RgbColor (string): Color in #RRGGBB format, where RR, GG, BB are integers 00-FF
-# - Mode (string, default "foreground"): "foreground" or "background"
-# Returns:
-# - string: ANSI escape sequence for the specified RGB color
-# ---------------------------------------------------------------------------------------------------------------------
-def SetRgb(RgbColor,Mode="foreground"):
-  if not re.match(r'^#[0-9a-fA-F]{6}$',RgbColor):
-    raise ValueError("Invalid RGB color format. Expected #RRGGBB.")
-  RedColorDecimal=int(RgbColor[1:3],16)
-  GreenColorDecimal=int(RgbColor[3:5],16)
-  BlueColorDecimal=int(RgbColor[5:7],16)
-  Color=f"{RedColorDecimal};{GreenColorDecimal};{BlueColorDecimal}"
-  if Mode=="foreground":
-    return f"{_ESCAPE_PREFIX}38;2;{Color}m"
-  elif Mode=="background":
-    return f"{_ESCAPE_PREFIX}48;2;{Color}m"
-
 # ---------------------------------------------------------------------------------------------------------------------
 # Return the ANSI DSR sequence to query cursor position; terminal replies with \x1b[row;colR
 # Args: None

@@ -173,7 +173,7 @@ def SelectOption(InputOptions,MaxLines,HighlightColor,BackgroundColor=None,Print
     else:
       OptionText=" "+OptionText[1:]
     OptionText=OptionText.ljust(Width)
-    return ansi.SetRgb(Opt["color"])+Color+OptionText+ansi.ResetColor()
+    return ansi.SetFgColor(Opt["color"])+Color+OptionText+ansi.ResetColor()
   
   #Print options for current offset
   def PrintOptions(Options,FirstOptionRow,OptionOffset,VisibleLines,OptionsPerLine,OptionWidth,TerminalCols,BackColor):
@@ -201,7 +201,7 @@ def SelectOption(InputOptions,MaxLines,HighlightColor,BackgroundColor=None,Print
     StatusTextAdjusted=StatusTextAdjusted[:TerminalCols-len(SelectedOptionText)-2]+"\u2026" if len(StatusTextAdjusted)>TerminalCols-len(SelectedOptionText)-2 else StatusTextAdjusted
     StatusLine=f"{StatusTextAdjusted+" "*(TerminalCols-len(StatusTextAdjusted)-len(SelectedOptionText))+SelectedOptionText}"
     terminal.SetCursorPos(StatusRow,1)
-    terminal.Write(ansi.SetRgb(StatusForeColor)+ansi.SetRgb(StatusBackColor,"background")+StatusLine.ljust(TerminalCols)+ansi.ResetColor())
+    terminal.Write(ansi.SetFgColor(StatusForeColor)+ansi.SetBkColor(StatusBackColor)+StatusLine.ljust(TerminalCols)+ansi.ResetColor())
 
   #If no options, return None
   if not InputOptions:
@@ -215,9 +215,9 @@ def SelectOption(InputOptions,MaxLines,HighlightColor,BackgroundColor=None,Print
     terminal.SetForceLineBreak(False)
     
     #Set HighlightColor and BackgroundColor ANSI strings
-    HighColor=ansi.SetRgb(HighlightColor,"background")
+    HighColor=ansi.SetBkColor(HighlightColor)
     if BackgroundColor!=None:
-      BackColor=ansi.SetRgb(BackgroundColor,"background")
+      BackColor=ansi.SetBkColor(BackgroundColor)
     else:
       BackColor=""
     
