@@ -444,11 +444,28 @@ class CommandDispatcher:
   # Returns:
   # - DispatcherResult: Result of the last command executed in the sequence, or the first error encountered
   # -------------------------------------------------------------------------------------------------------------------
-  def ExecuteScript(self,Commands):
+  def ExecuteScript(self,Script):
+    
+    #Read command lines
+    if isinstance(Script,list):
+      Commands=Script
+    elif isinstance(Script,str):
+      try:
+        Commands=open(Script,"r").read().splitlines()
+      except Exception as Ex:
+        Message=f"Unable to open file {Script}: {str(Ex)}"
+        return DispatcherResult.DispatcherError(Message)
+    else:
+      Message=f"Passed script is not list or string (but {type(Script)})"
+      return DispatcherResult.DispatcherError(Message)
+    
+    #Execute commands
     for Cmd in Commands:
       if Cmd.strip()=="" or Cmd.strip().startswith("#"):
         continue
       Result=self.ExecuteCommand(Cmd)
       if Result.Event!=DispatcherResult.OK:
         break
+    
+    #Return result
     return Result

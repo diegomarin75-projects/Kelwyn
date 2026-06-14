@@ -119,18 +119,12 @@ class Shell:
     
     #Initial script execution
     if self.InitScript!=None:
-      try:
-        Lines=open(self.InitScript,"r").read().splitlines()
-        Result=self.Dispatcher.ExecuteScript(Lines)
-        if Result.Event!=dispatcher.DispatcherResult.OK:
-          terminal.Write(ansi.SetFgColor(ErrorMessageColor)+f"Init error: {Result.Output}"+ansi.ResetColor()+"\n")
-      except Exception as Ex:
-        terminal.Write(ansi.SetFgColor(ErrorMessageColor)+f"Exception on init script: {Ex}"+ansi.ResetColor()+"\n")
-    elif self.SkipInit==False:
-      Commands=["clear","banner","wellcome"]
-      Result=self.Dispatcher.ExecuteScript(Commands)
-      if Result.Event!=dispatcher.DispatcherResult.OK:
-        terminal.Write(ansi.SetFgColor(ErrorMessageColor)+f"Init error: {Result.Output}"+ansi.ResetColor()+"\n")
+      InitFile=self.InitScript
+    else:
+      InitFile=["clear","banner","wellcome"]
+    Result=self.Dispatcher.ExecuteScript(InitFile)
+    if Result.Event!=dispatcher.DispatcherResult.OK:
+      terminal.Write(ansi.SetFgColor(ErrorMessageColor)+f"Init error: {Result.Output}"+ansi.ResetColor()+"\n")
     
     #Execution for single command
     if self.Command!=None:
