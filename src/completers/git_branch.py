@@ -58,8 +58,8 @@ def Completer(Token,Config):
 
   #Get git branches
   try:
-    RetCode,Output=utils.Exec("git for-each-ref refs --format=%(refname:short)",Timeout=5)
-    if RetCode!=0:
+    Status,RetCode,Output=utils.Exec("git for-each-ref refs --format=%(refname:short)",Timeout=5)
+    if Status==False or RetCode!=0:
       debug.Get().Send(f"Git for-each-ref failed with code {RetCode} and output: {Output.replace('\n',' ')!r}")
       return []
     debug.Get().Send(f"Git for-each-ref result: {Output.replace("\n"," ")!r}")

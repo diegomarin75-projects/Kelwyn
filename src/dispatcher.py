@@ -12,6 +12,7 @@ import debug
 import utils
 import parser
 import evaluator
+import subprocess
 import threading
 import terminal
 from pathlib import Path
@@ -242,6 +243,39 @@ class CommandDispatcher:
     #Return help output
     return True,Output
 
+  # ---------------------------------------------------------------------------
+  # Execute a command and return its output and return code
+  # Args:
+  # - Command (string): Command to execute as a string
+  # - Redirect (bool, default False): Whether to capture and return command output (stdout and stderr combined)
+  # - Detached (bool, default False): Whether to launch process as detached
+  # Returns:
+  # - boolean: True=Process executed, False=Exception
+  # - int: Command return code
+  # - string: Command output when Redirect is True, Process Pid when Detached is True, else None
+  # ---------------------------------------------------------------------------
+  def ExecProcess(self,Command,Redirect=True,Detached=False):
+    try:
+      if Redirect==True:
+        Proc=subprocess.Popen(Command,shell=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,encoding="utf-8")
+        Output=Proc.communicate()[0]
+        ReturnCode=Proc.returncode
+        return True,ReturnCode,Output
+      elif Detached==True:
+        Proc=subprocess.Popen(Command,shell=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,stdin=subprocess.DEVNULL,start_new_session=True)
+        return True,None,str(Proc.pid)
+      else:
+        Proc=subprocess.Popen(Command,shell=True,encoding="utf-8")
+        Proc.wait()
+        ReturnCode=Proc.returncode
+        return True,ReturnCode,None
+    except KeyboardInterrupt:
+      Output=("Command execution interrupted by user" if Redirect else None)
+      return False,None,Output
+    except Exception as Ex:
+      Output=f"Command execution exception: {Ex}"
+      return False,None,Output
+
   # -------------------------------------------------------------------------------------------------------------------
   # Executes a command
   # Args:
@@ -296,18 +330,20 @@ class CommandDispatcher:
     #Pass-through command execution to system when it starts by $
     if Cmd.strip().startswith("$"):
       if Background==False:
-        RetCode,Output=utils.Exec(Cmd[1:],Redirect=Redirect)
-        if RetCode==0:
+        Status,RetCode,Output=self.ExecProcess(Cmd[1:],Redirect=Redirect)
+        if Status==False:
+          return DispatcherResult.DispatcherError(Output)
+        elif RetCode==0:
           return DispatcherResult.Ok(Output)
         else:
           return DispatcherResult.ExternalError(RetCode,Output)
       else:
-        RetCode,Pid=utils.Exec(Cmd[1:],Redirect=False,Detached=True)
-        if RetCode==0:
+        Status,RetCode,Pid=self.ExecProcess(Cmd[1:],Redirect=False,Detached=True)
+        if Status==False:
+          return DispatcherResult.DispatcherError(Output)
+        else:
           terminal.Write(f"Process launched in backgrpund (pid={Pid})")
           return DispatcherResult.Ok()
-        else:
-          return DispatcherResult.DispatcherError(RetCode,Output)
     
     #Find most inner built-in function calls and execute
     while True:
@@ -339,18 +375,20 @@ class CommandDispatcher:
     #Pass-through command execution to system when command is not implemented
     if Tool not in self.CommandDir and Tool!="help":
       if Background==False:
-        RetCode,Output=utils.Exec(Cmd,Redirect=Redirect)
-        if RetCode==0:
+        Status,RetCode,Output=self.ExecProcess(Cmd,Redirect=Redirect)
+        if Status==False:
+          return DispatcherResult.DispatcherError(Output)
+        elif RetCode==0:
           return DispatcherResult.Ok(Output)
         else:
           return DispatcherResult.ExternalError(RetCode,Output)
       else:
-        RetCode,Pid=utils.Exec(Cmd,Redirect=False,Detached=True)
-        if RetCode==0:
+        Status,RetCode,Pid=self.ExecProcess(Cmd,Redirect=False,Detached=True)
+        if Status==False:
+          return DispatcherResult.DispatcherError(Output)
+        else:
           terminal.Write(f"Process launched in backgrpund (pid={Pid})")
           return DispatcherResult.Ok()
-        else:
-          return DispatcherResult.DispatcherError(RetCode,Output)
     
     #Parse command
     Status,Message,Tokens=self.Parser.Parse(Cmd)
@@ -413,7 +451,7 @@ class CommandDispatcher:
       #Execute in background
       elif Background==True:
         BackgroundCmd=f"python {__file__} --config {self.Config["config_file_path"]} --skip-init --command \"{Cmd}\""
-        RetCode,Pid=utils.Exec(BackgroundCmd,Redirect=False,Detached=True)
+        RetCode,Pid=self.ExecProcess(BackgroundCmd,Redirect=False,Detached=True)
         if RetCode==0:
           terminal.Write(f"Process launched in backgrpund (pid={Pid})")
           return DispatcherResult.Ok()

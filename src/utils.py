@@ -93,40 +93,29 @@ def IsAccessible(FilePath,QuickMode=False):
 # Execute a command and return its output and return code
 # Args:
 # - Command (string): Command to execute as a string
-# - Redirect (bool, default False): Whether to capture and return command output (stdout and stderr combined)
-# - Detached (bool, default False): Whether to launch process as detached
 # - Timeout (float, default None): Timeout in seconds for command execution, or None for no timeout
 # Returns:
-# - int: Command return code (0 for success, -1 Keyboard interrupt, -2 Timeout, >0 Error)
+# - boolean: True=Process executed, False=Exception
+# - int: Command return code
 # - string: Command output when Redirect is True, Process Pid when Detached is True, else None
 # ---------------------------------------------------------------------------
-def Exec(Command,Redirect=True,Detached=False,Timeout=None):
+def Exec(Command,Timeout=None):
   try:
-    if Redirect==True:
-      Proc=subprocess.Popen(Command,shell=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,encoding="utf-8")
-      if Timeout!=None:
-        try:
-          Output=Proc.communicate(timeout=Timeout)[0]
-        except subprocess.TimeoutExpired:
-          Proc.kill()
-          Output=Proc.communicate()[0]
-          return -2,Output
-      else:
+    Proc=subprocess.Popen(Command,shell=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,encoding="utf-8")
+    if Timeout!=None:
+      try:
+        Output=Proc.communicate(timeout=Timeout)[0]
+      except subprocess.TimeoutExpired:
+        Proc.kill()
         Output=Proc.communicate()[0]
-      ReturnCode=Proc.returncode
-      return ReturnCode,Output
-    elif Detached==True:
-      Proc=subprocess.Popen(Command,shell=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,stdin=subprocess.DEVNULL,start_new_session=True)
-      return 0,str(Proc.pid)
+        return False,-1,Output
     else:
-      ReturnCode=subprocess.call(Command,shell=True,encoding="utf-8")
-      return ReturnCode,None
-  except KeyboardInterrupt:
-    Output=("Command execution interrupted by user" if Redirect else None)
-    return -1,Output
+      Output=Proc.communicate()[0]
+    ReturnCode=Proc.returncode
+    return True,ReturnCode,Output
   except Exception as Ex:
     Output=f"Command execution exception: {Ex}"
-    return -1,Output
+    return False,-1,Output
 
 # -------------------------------------------------------------------------
 # Load python module from a given file path
