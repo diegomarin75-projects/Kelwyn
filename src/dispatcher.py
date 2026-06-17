@@ -8,6 +8,7 @@
 import os
 import re
 import io
+import shutil
 import debug
 import utils
 import parser
@@ -246,7 +247,8 @@ class CommandDispatcher:
   # ---------------------------------------------------------------------------
   # Execute a command and return its output and return code
   # Args:
-  # - Command (string): Command to execute as a string
+  # - Command (string or list): Command to execute as a string in shell mode or list or string in program mode
+  # - Shell (bool, default True): Execute comand in shell mode (True) or program mode (False)
   # - Redirect (bool, default False): Whether to capture and return command output (stdout and stderr combined)
   # - Detached (bool, default False): Whether to launch process as detached
   # Returns:
@@ -254,27 +256,35 @@ class CommandDispatcher:
   # - int: Command return code
   # - string: Command output when Redirect is True, Process Pid when Detached is True, else None
   # ---------------------------------------------------------------------------
-  def ExecProcess(self,Command,Redirect=True,Detached=False):
+  def ExecProcess(self,Command,Shell=True,Redirect=True,Detached=False):
+    debug.Get().Send(f"Execute process input: {Command} Shell={Shell} Redirect={Redirect} Detached={Detached}")
     try:
       if Redirect==True:
-        Proc=subprocess.Popen(Command,shell=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,encoding="utf-8")
+        Proc=subprocess.Popen(Command,shell=Shell,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,encoding="utf-8")
         Output=Proc.communicate()[0]
         ReturnCode=Proc.returncode
-        return True,ReturnCode,Output
+        Status=True
       elif Detached==True:
-        Proc=subprocess.Popen(Command,shell=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,stdin=subprocess.DEVNULL,start_new_session=True)
-        return True,None,str(Proc.pid)
+        Proc=subprocess.Popen(Command,shell=Shell,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,stdin=subprocess.DEVNULL,start_new_session=True)
+        Output=str(Proc.pid)
+        ReturnCode=None
+        Status=True
       else:
-        Proc=subprocess.Popen(Command,shell=True,encoding="utf-8")
+        Proc=subprocess.Popen(Command,shell=Shell,encoding="utf-8")
         Proc.wait()
+        Output=None
         ReturnCode=Proc.returncode
-        return True,ReturnCode,None
+        Status=True
     except KeyboardInterrupt:
       Output=("Command execution interrupted by user" if Redirect else None)
-      return False,None,Output
+      ReturnCode=None
+      Status=False
     except Exception as Ex:
       Output=f"Command execution exception: {Ex}"
-      return False,None,Output
+      ReturnCode=None
+      Status=False
+    debug.Get().Send(f"Execute process output: Status={Status} ReturnCode={ReturnCode} Output='{Output.replace("\n","\\n") if Output!=None else Output}'")
+    return Status,ReturnCode,Output
 
   # -------------------------------------------------------------------------------------------------------------------
   # Executes a command
@@ -327,10 +337,12 @@ class CommandDispatcher:
     if Tool=="exit":
       return DispatcherResult.Terminate()
     
-    #Pass-through command execution to system when it starts by $
-    if Cmd.strip().startswith("$"):
+    #Pass-through command execution to system when it starts by $ or it is pass through list
+    if Cmd.strip().startswith("$") or Tool in self.Config["pass_through_commands"]:
+      if Cmd.strip().startswith("$"):
+        Cmd=Cmd[1:].strip()
       if Background==False:
-        Status,RetCode,Output=self.ExecProcess(Cmd[1:],Redirect=Redirect)
+        Status,RetCode,Output=self.ExecProcess(Cmd,Redirect=Redirect)
         if Status==False:
           return DispatcherResult.DispatcherError(Output)
         elif RetCode==0:
@@ -338,7 +350,7 @@ class CommandDispatcher:
         else:
           return DispatcherResult.ExternalError(RetCode,Output)
       else:
-        Status,RetCode,Pid=self.ExecProcess(Cmd[1:],Redirect=False,Detached=True)
+        Status,RetCode,Pid=self.ExecProcess(Cmd,Redirect=False,Detached=True)
         if Status==False:
           return DispatcherResult.DispatcherError(Output)
         else:
@@ -359,7 +371,7 @@ class CommandDispatcher:
           if Result.Event!=DispatcherResult.OK:
             Message=f"Error executing inner command '{InnerCmd}': {Result.Output}"
             return DispatcherResult.DispatcherError(Message)
-          Output=Result.Output if Result.Output!=None else ""
+          Output=Result.Output.replace("\n","\\n").replace("\"","\"\"") if Result.Output!=None else ""
           Cmd=Cmd[:CallStart]+"\""+Output+"\""+Cmd[CallEnd+1:]
         elif InnerCall.startswith("eval"):
           InnerExpr=InnerCall[5:-1]
@@ -371,24 +383,6 @@ class CommandDispatcher:
           break
       else:
         break
-    
-    #Pass-through command execution to system when command is not implemented
-    if Tool not in self.CommandDir and Tool!="help":
-      if Background==False:
-        Status,RetCode,Output=self.ExecProcess(Cmd,Redirect=Redirect)
-        if Status==False:
-          return DispatcherResult.DispatcherError(Output)
-        elif RetCode==0:
-          return DispatcherResult.Ok(Output)
-        else:
-          return DispatcherResult.ExternalError(RetCode,Output)
-      else:
-        Status,RetCode,Pid=self.ExecProcess(Cmd,Redirect=False,Detached=True)
-        if Status==False:
-          return DispatcherResult.DispatcherError(Output)
-        else:
-          terminal.Write(f"Process launched in backgrpund (pid={Pid})")
-          return DispatcherResult.Ok()
     
     #Parse command
     Status,Message,Tokens=self.Parser.Parse(Cmd)
@@ -421,6 +415,29 @@ class CommandDispatcher:
           return DispatcherResult.Ok()
       else:
         return DispatcherResult.DispatcherError(Output)
+    
+    #External program execution
+    if Tool not in self.CommandDir:
+      Program=shutil.which(Tool)
+      if Program==None:
+        Message=f"External command '{Tool}' is not found or not implemented"
+        return DispatcherResult.DispatcherError(Message)
+      Args=[Program]+[Token["value"] for Token in Tokens[1:]]
+      if Background==False:
+        Status,RetCode,Output=self.ExecProcess(Args,Shell=False,Redirect=Redirect)
+        if Status==False:
+          return DispatcherResult.DispatcherError(Output)
+        elif RetCode==0:
+          return DispatcherResult.Ok(Output)
+        else:
+          return DispatcherResult.ExternalError(RetCode,Output)
+      else:
+        Status,RetCode,Pid=self.ExecProcess(Args,Shell=False,Redirect=False,Detached=True)
+        if Status==False:
+          return DispatcherResult.DispatcherError(Output)
+        else:
+          terminal.Write(f"Process launched in backgrpund (pid={Pid})")
+          return DispatcherResult.Ok()
     
     #Check if command module has Get and Execute functions
     if self.CommandDir[Tool]["get"]==None or self.CommandDir[Tool]["execute"]==None:

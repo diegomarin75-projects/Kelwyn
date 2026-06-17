@@ -5,6 +5,7 @@
 # ---------------------------------------------------------------------------------------------------------------------
 # Import libraries
 # ---------------------------------------------------------------------------------------------------------------------
+import debug
 import math
 import cmath
 import random
@@ -21,8 +22,10 @@ class Evaluator:
   #Evaluate expression with limited built-ins and math, cmath, random modules
   def Evaluate(self,Expression):
     try:
+      debug.Get().Send(f"evaluator input: Expression='{Expression}'")
       Globals={"__builtins__":{},"math":math,"cmath":cmath,"random":random}
-      Result=str(eval(Expression,globals=Globals))
+      Result=str(eval(Expression,Globals))
+      debug.Get().Send(f"evaluator output: Result='{Result}'")
     except Exception as Ex:
       Message=f"Error evaluating expression '{Expression}': {Ex}"
       return False,Message,None

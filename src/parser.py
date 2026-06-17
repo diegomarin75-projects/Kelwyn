@@ -85,6 +85,9 @@ class CommandParser:
   # -------------------------------------------------------------------------------------------------------------------
   def Parse(self,Command,Start=0):
     
+    #Debug message
+    debug.Get().Send(f"Parser input: Command={Command} Start={Start}")
+    
     #Init loop
     Tokens=[]
     Index=0
@@ -167,8 +170,10 @@ class CommandParser:
       Message="Open quoted string in command"
       return PARSER_ERROR_OPEN_QUOTED_STRING,Message,None
     
+    #Debug message
+    debug.Get().Send(f"Parser output: Command={Command!r} Tokens={Tokens!r}")
+    
     #Return tokenized command
-    debug.Get().Send(f"Parser: Command={Command!r} Tokens={Tokens!r}")
     return PARSER_OK,"",Tokens
 
   # -------------------------------------------------------------------------------------------------------------------
@@ -193,10 +198,10 @@ class CommandParser:
         CallEnd=self._FindEndingParenthesis(Command,CallStart)
         if CallEnd==-1:
           Message=f"Unmatched parenthesis in command at position {Start+CallStart}"
-          return PARSER_ERROR_UNMATCHED_PARENTHESIS,Message,None
+          return PARSER_ERROR_UNMATCHED_PARENTHESIS,Message,None,None
         elif CallEnd==-2:
           Message=f"Open quoted string in command at position {Start+Command.rfind('\"')}"
-          return PARSER_ERROR_OPEN_QUOTED_STRING,Message,None
+          return PARSER_ERROR_OPEN_QUOTED_STRING,Message,None,None
         else:
           break
     

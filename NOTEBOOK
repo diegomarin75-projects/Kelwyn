@@ -1,6 +1,7 @@
 --- Kelwyn lang project notes file ---
 
 # Open tasks:
+2026-06-17_064319 : Kelwyn must usr \" to escape quotes inside strings like python (it is more consistent and causing less trouble)
 2026-06-11_210934 : Implement multiple command execution ;
 2026-06-11_211056 : Implement ps and kill commands
 2026-06-11_211101 : Implement redirection and pipe operators
