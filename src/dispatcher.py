@@ -131,7 +131,7 @@ class CommandDispatcher:
         Index+=1
         continue
       if Tokens[Index]["type"]!="string":
-        Message=f"Unexpected token '{Tokens[Index]['type']}' at position {Index}"
+        Message=f"Unexpected token '{Tokens[Index]['value']}' at position {Index}"
         return False,Message,None
       OptionRead=None
       for Opt in OptionDef:
@@ -371,13 +371,14 @@ class CommandDispatcher:
           if Result.Event!=DispatcherResult.OK:
             Message=f"Error executing inner command '{InnerCmd}': {Result.Output}"
             return DispatcherResult.DispatcherError(Message)
-          Output=Result.Output.replace("\n","\\n").replace("\"","\"\"") if Result.Output!=None else ""
+          Output=Result.Output.replace("\n","\\n").replace("\"","\\\"") if Result.Output!=None else ""
           Cmd=Cmd[:CallStart]+"\""+Output+"\""+Cmd[CallEnd+1:]
         elif InnerCall.startswith("eval"):
           InnerExpr=InnerCall[5:-1]
           Status,Message,EvalResult=self.Evaluator.Evaluate(InnerExpr)
           if Status==False:
             return DispatcherResult.DispatcherError(Message)
+          EvalResult=str(EvalResult).replace("\n","\\n").replace("\"","\\\"") if EvalResult!=None else ""
           Cmd=Cmd[:CallStart]+"\""+str(EvalResult)+"\""+Cmd[CallEnd+1:]
         else:
           break
@@ -401,7 +402,7 @@ class CommandDispatcher:
         print(Output)
         return DispatcherResult.Ok()
     elif (Tool=="help" and len(Tokens)==2 and Tokens[1]["type"]=="string") \
-     or (len(Tokens)==2 and Tokens[1]["type"]=="string" and Tokens[1]["value"]=="--help"):
+     or (len(Tokens)==2 and Tokens[1]["type"]=="string" and Tokens[1]["value"]=="--help" and Tool in self.CommandDir):
       if Tool=="help":
         HelpCommand=Tokens[1]["value"]
       else:
@@ -415,6 +416,9 @@ class CommandDispatcher:
           return DispatcherResult.Ok()
       else:
         return DispatcherResult.DispatcherError(Output)
+    elif Tool=="help" and len(Tokens)>2:
+      Message=f"Help command syntax error"
+      return DispatcherResult.DispatcherError(Message)
     
     #External program execution
     if Tool not in self.CommandDir:
