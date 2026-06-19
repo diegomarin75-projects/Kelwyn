@@ -329,6 +329,9 @@ class CommandDispatcher:
         Index=FoundPos+len(VarValue)
       else:
         Index=EndPos+2
+    
+    #Replace home directory
+    Cmd=Cmd.replace("~",self.Config["kelwyn_home"])
 
     #Identify tool by first token
     Tool=Cmd.strip().split(" ")[0] if len(Cmd.strip())>0 else ""
