@@ -423,6 +423,25 @@ class CommandDispatcher:
       Message=f"Help command syntax error"
       return DispatcherResult.DispatcherError(Message)
     
+    #Detect redirection operators
+    if any(Token["type"]=="symbol" and Token["name"].startswith("redirect_") for Token in Tokens):
+      if len([Token for Token in Tokens if Token["type"]=="symbol" and Token["name"].startswith("redirect_")])>1:
+        Message=f"Multiple redirection operators are not supported"
+        return DispatcherResult.DispatcherError(Message)
+      if len(Tokens)<3 \
+      or Tokens[-2]["type"]!="symbol" or not Tokens[-2]["name"].startswith("redirect_") \
+      or Tokens[-1]["type"]!="string":
+        Message=f"Redirection syntax is: <command> <redirection_operator> <file>"
+        return DispatcherResult.DispatcherError(Message)
+      RedirectionOperToken=Tokens[-2]
+      RedirectionFileToken=Tokens[-1]
+      Tokens=Tokens[:-2]
+      Cmd=Cmd[:RedirectionOperToken["start"]].strip()
+    else:
+      RedirectionOperToken=None
+      RedirectionFileToken=None
+    print(f"Redirection operator: {RedirectionOperToken} Redirection file: {RedirectionFileToken}\nCmd: {Cmd} Tokens: {Tokens}")
+    
     #External program execution
     if Tool not in self.CommandDir:
       Program=shutil.which(Tool)

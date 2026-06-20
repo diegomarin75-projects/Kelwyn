@@ -1,0 +1,18 @@
+ El volumen de la unidad C es Windows
+ El número de serie del volumen es: D823-7F75
+
+ Directorio de c:\01Diego\75_repos\projects\Kelwyn\beta
+
+20/06/2026  15:12    <DIR>          .
+11/06/2026  06:47    <DIR>          ..
+12/06/2026  05:29             5,004 .gitignore
+20/06/2026  14:53           874,121 .kelwyn_debug.log
+12/06/2026  05:29    <DIR>          cfg
+12/06/2026  05:29             1,095 LICENSE
+20/06/2026  15:11             1,880 NOTEBOOK
+20/06/2026  15:12                 0 out.txt
+12/06/2026  05:29            13,419 README.md
+12/06/2026  05:29    <DIR>          res
+16/06/2026  05:40    <DIR>          src
+               6 archivos        895,519 bytes
+               5 dirs  67,339,460,608 bytes libres
