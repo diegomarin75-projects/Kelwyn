@@ -129,7 +129,7 @@ def IsAccessible(FilePath,QuickMode=False):
 # Returns:
 # - boolean: True=Process executed, False=Exception
 # - int: Command return code
-# - string: Command output when Redirect is True, Process Pid when Detached is True, else None
+# - string: Command output
 # ---------------------------------------------------------------------------
 def Exec(Command,Timeout=None):
   try:

@@ -249,27 +249,27 @@ class CommandDispatcher:
   # Args:
   # - Command (string or list): Command to execute as a string in shell mode or list or string in program mode
   # - Shell (bool, default True): Execute comand in shell mode (True) or program mode (False)
-  # - Redirect (string, default None): Whether to capture and return command output (1=stdout, 2=stderr, all=both, None=No capture)
+  # - Capture (string, default None): Whether to capture and return command output (1=stdout, 2=stderr, all=both, None=No capture)
   # - Detached (bool, default False): Whether to launch process as detached
   # Returns:
   # - boolean: True=Process executed, False=Exception
   # - int: Command return code
-  # - string: Command output when Redirect is True, Process Pid when Detached is True, else None
+  # - string: Command output when Capture is not None, Process Pid when Detached is True, else None
   # ---------------------------------------------------------------------------
-  def ExecProcess(self,Command,Shell=True,Redirect=None,Detached=False):
-    debug.Get().Send(f"Execute process input: {Command} Shell={Shell} Redirect={Redirect} Detached={Detached}")
+  def ExecProcess(self,Command,Shell=True,Capture=None,Detached=False):
+    debug.Get().Send(f"Execute process input: {Command} Shell={Shell} Capture={Capture} Detached={Detached}")
     try:
-      if Redirect=="1":
+      if Capture=="1":
         Proc=subprocess.Popen(Command,shell=Shell,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True,encoding="utf-8")
         Output=Proc.communicate()[0]
         ReturnCode=Proc.returncode
         Status=True
-      elif Redirect=="2":
+      elif Capture=="2":
         Proc=subprocess.Popen(Command,shell=Shell,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,text=True,encoding="utf-8")
         Output=Proc.communicate()[1]
         ReturnCode=Proc.returncode
         Status=True
-      elif Redirect=="all":
+      elif Capture=="all":
         Proc=subprocess.Popen(Command,shell=Shell,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,encoding="utf-8")
         Output=Proc.communicate()[0]
         ReturnCode=Proc.returncode
@@ -286,7 +286,7 @@ class CommandDispatcher:
         ReturnCode=Proc.returncode
         Status=True
     except KeyboardInterrupt:
-      Output=("Command execution interrupted by user" if Redirect else None)
+      Output=("Command execution interrupted by user" if Capture!=None else None)
       ReturnCode=None
       Status=False
     except Exception as Ex:
@@ -300,22 +300,22 @@ class CommandDispatcher:
   # Executes a command
   # Args:
   # - Command (string): Command to execute
-  # - Redirect (string, default None): Whether to capture and return command output (1=stdout, 2=stderr, all=both, None=No capture)
+  # - GetOutput (boolean, default False): Get command output (True) or not (False)
   # Returns:
   # - DispatcherResult: Result of command execution
   # -------------------------------------------------------------------------------------------------------------------
-  def ExecuteCommand(self,Command,Redirect=None):
+  def ExecuteCommand(self,Command,GetOutput=False):
 
     #Debug message
-    debug.Get().Send(f"Executing command: {Command} (Redirect={Redirect})")
+    debug.Get().Send(f"Executing command: {Command} (GetOutput={GetOutput})")
     
     #Get command
     Cmd=Command.strip()
     
     #Detect command execution in background
     if Cmd.endswith(" &"):
-      if Redirect==True:
-        Message=f"Cannot launch process in background and redirected at the same time ({Command})"
+      if GetOutput==True:
+        Message=f"Cannot launch process in background and get output at the same time ({Command})"
         return DispatcherResult.DispatcherError(Message)
       Cmd=Cmd[:-2].strip()
       Background=True
@@ -355,7 +355,7 @@ class CommandDispatcher:
       if Cmd.strip().startswith("$"):
         Cmd=Cmd[1:].strip()
       if Background==False:
-        Status,RetCode,Output=self.ExecProcess(Cmd,Redirect=Redirect)
+        Status,RetCode,Output=self.ExecProcess(Cmd,Capture="all" if GetOutput==True else None)
         if Status==False:
           return DispatcherResult.DispatcherError(Output)
         elif RetCode==0:
@@ -363,7 +363,7 @@ class CommandDispatcher:
         else:
           return DispatcherResult.ExternalError(RetCode,Output)
       else:
-        Status,RetCode,Pid=self.ExecProcess(Cmd,Redirect=None,Detached=True)
+        Status,RetCode,Pid=self.ExecProcess(Cmd,Capture=None,Detached=True)
         if Status==False:
           return DispatcherResult.DispatcherError(Output)
         else:
@@ -380,7 +380,7 @@ class CommandDispatcher:
         InnerCall=Cmd[CallStart:CallEnd+1]
         if InnerCall.startswith("exec"):
           InnerCmd=InnerCall[5:-1]
-          Result=self.ExecuteCommand(InnerCmd,Redirect="all")
+          Result=self.ExecuteCommand(InnerCmd,GetOutput=True)
           if Result.Event!=DispatcherResult.OK:
             Message=f"Error executing inner command '{InnerCmd}': {Result.Output}"
             return DispatcherResult.DispatcherError(Message)
@@ -409,7 +409,7 @@ class CommandDispatcher:
     #Help command: Print help for specified command or general help if no command specified
     if Tool=="help" and len(Tokens)==1:
       Output=self.PrintCommandList()
-      if Redirect==True:
+      if GetOutput==True:
         return DispatcherResult.Ok(Output)
       else:
         print(Output)
@@ -422,7 +422,7 @@ class CommandDispatcher:
         HelpCommand=Tool
       Status,Output=self.PrintHelp(HelpCommand)
       if Status==True:
-        if Redirect==True:
+        if GetOutput==True:
           return DispatcherResult.Ok(Output)
         else:
           print(Output)
@@ -462,7 +462,7 @@ class CommandDispatcher:
         return DispatcherResult.DispatcherError(Message)
       Args=[Program]+[Token["value"] for Token in Tokens[1:]]
       if Background==False:
-        Status,RetCode,Output=self.ExecProcess(Args,Shell=False,Redirect=Redirect)
+        Status,RetCode,Output=self.ExecProcess(Args,Shell=False,Capture="all" if GetOutput==True else None)
         if Status==False:
           return DispatcherResult.DispatcherError(Output)
         elif RetCode==0:
@@ -470,7 +470,7 @@ class CommandDispatcher:
         else:
           return DispatcherResult.ExternalError(RetCode,Output)
       else:
-        Status,RetCode,Pid=self.ExecProcess(Args,Shell=False,Redirect=None,Detached=True)
+        Status,RetCode,Pid=self.ExecProcess(Args,Shell=False,Capture=None,Detached=True)
         if Status==False:
           return DispatcherResult.DispatcherError(Output)
         else:
@@ -493,7 +493,7 @@ class CommandDispatcher:
     try:
       
       #Execution in output redirection mode
-      if Redirect==True:
+      if GetOutput==True:
         Buffer=io.StringIO()
         with redirect_stdout(Buffer), redirect_stderr(Buffer):
           Status=self.CommandDir[Tool]["execute"](CmdOptions,self.Config)
@@ -506,7 +506,7 @@ class CommandDispatcher:
       #Execute in background
       elif Background==True:
         BackgroundCmd=f"python {__file__} --config {self.Config["config_file_path"]} --skip-init --command \"{Cmd}\""
-        RetCode,Pid=self.ExecProcess(BackgroundCmd,Redirect=None,Detached=True)
+        RetCode,Pid=self.ExecProcess(BackgroundCmd,Capture=None,Detached=True)
         if RetCode==0:
           terminal.Write(f"Process launched in backgrpund (pid={Pid})")
           return DispatcherResult.Ok()
