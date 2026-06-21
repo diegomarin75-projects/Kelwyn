@@ -249,17 +249,27 @@ class CommandDispatcher:
   # Args:
   # - Command (string or list): Command to execute as a string in shell mode or list or string in program mode
   # - Shell (bool, default True): Execute comand in shell mode (True) or program mode (False)
-  # - Redirect (bool, default False): Whether to capture and return command output (stdout and stderr combined)
+  # - Redirect (string, default None): Whether to capture and return command output (1=stdout, 2=stderr, all=both, None=No capture)
   # - Detached (bool, default False): Whether to launch process as detached
   # Returns:
   # - boolean: True=Process executed, False=Exception
   # - int: Command return code
   # - string: Command output when Redirect is True, Process Pid when Detached is True, else None
   # ---------------------------------------------------------------------------
-  def ExecProcess(self,Command,Shell=True,Redirect=True,Detached=False):
+  def ExecProcess(self,Command,Shell=True,Redirect=None,Detached=False):
     debug.Get().Send(f"Execute process input: {Command} Shell={Shell} Redirect={Redirect} Detached={Detached}")
     try:
-      if Redirect==True:
+      if Redirect=="1":
+        Proc=subprocess.Popen(Command,shell=Shell,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True,encoding="utf-8")
+        Output=Proc.communicate()[0]
+        ReturnCode=Proc.returncode
+        Status=True
+      elif Redirect=="2":
+        Proc=subprocess.Popen(Command,shell=Shell,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,text=True,encoding="utf-8")
+        Output=Proc.communicate()[1]
+        ReturnCode=Proc.returncode
+        Status=True
+      elif Redirect=="all":
         Proc=subprocess.Popen(Command,shell=Shell,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,encoding="utf-8")
         Output=Proc.communicate()[0]
         ReturnCode=Proc.returncode
@@ -290,11 +300,11 @@ class CommandDispatcher:
   # Executes a command
   # Args:
   # - Command (string): Command to execute
-  # - Redirect (bool): Whether to redirect command output to terminal (True) or return it in the DispatcherResult.Output field (False)
+  # - Redirect (string, default None): Whether to capture and return command output (1=stdout, 2=stderr, all=both, None=No capture)
   # Returns:
   # - DispatcherResult: Result of command execution
   # -------------------------------------------------------------------------------------------------------------------
-  def ExecuteCommand(self,Command,Redirect=False):
+  def ExecuteCommand(self,Command,Redirect=None):
 
     #Debug message
     debug.Get().Send(f"Executing command: {Command} (Redirect={Redirect})")
@@ -331,7 +341,7 @@ class CommandDispatcher:
         Index=EndPos+2
     
     #Replace home directory
-    Cmd=Cmd.replace("~",self.Config["kelwyn_home"])
+    Cmd=utils.FilePathDisp2Intr(Cmd,self.Config)
 
     #Identify tool by first token
     Tool=Cmd.strip().split(" ")[0] if len(Cmd.strip())>0 else ""
@@ -353,7 +363,7 @@ class CommandDispatcher:
         else:
           return DispatcherResult.ExternalError(RetCode,Output)
       else:
-        Status,RetCode,Pid=self.ExecProcess(Cmd,Redirect=False,Detached=True)
+        Status,RetCode,Pid=self.ExecProcess(Cmd,Redirect=None,Detached=True)
         if Status==False:
           return DispatcherResult.DispatcherError(Output)
         else:
@@ -370,7 +380,7 @@ class CommandDispatcher:
         InnerCall=Cmd[CallStart:CallEnd+1]
         if InnerCall.startswith("exec"):
           InnerCmd=InnerCall[5:-1]
-          Result=self.ExecuteCommand(InnerCmd,Redirect=True)
+          Result=self.ExecuteCommand(InnerCmd,Redirect="all")
           if Result.Event!=DispatcherResult.OK:
             Message=f"Error executing inner command '{InnerCmd}': {Result.Output}"
             return DispatcherResult.DispatcherError(Message)
@@ -433,14 +443,16 @@ class CommandDispatcher:
       or Tokens[-1]["type"]!="string":
         Message=f"Redirection syntax is: <command> <redirection_operator> <file>"
         return DispatcherResult.DispatcherError(Message)
-      RedirectionOperToken=Tokens[-2]
-      RedirectionFileToken=Tokens[-1]
+      RedirectionPipeMode={"out":"1","err":"2","all":"all"}.get(Tokens[-2]["name"].split("_")[1])
+      RedirectionFileMode=Tokens[-2]["name"].split("_")[2]
+      RedirectionFilePath=Tokens[-1]["value"]
+      Cmd=Cmd[:Tokens[-2]["start"]].strip()
       Tokens=Tokens[:-2]
-      Cmd=Cmd[:RedirectionOperToken["start"]].strip()
+      debug.Get().Send(f"Redirection detected: PipeMode={RedirectionPipeMode} FileMode={RedirectionFileMode} FilePath={RedirectionFilePath}")
     else:
-      RedirectionOperToken=None
-      RedirectionFileToken=None
-    print(f"Redirection operator: {RedirectionOperToken} Redirection file: {RedirectionFileToken}\nCmd: {Cmd} Tokens: {Tokens}")
+      RedirectionPipeMode=None
+      RedirectionFileMode=None
+      RedirectionFilePath=None
     
     #External program execution
     if Tool not in self.CommandDir:
@@ -458,7 +470,7 @@ class CommandDispatcher:
         else:
           return DispatcherResult.ExternalError(RetCode,Output)
       else:
-        Status,RetCode,Pid=self.ExecProcess(Args,Shell=False,Redirect=False,Detached=True)
+        Status,RetCode,Pid=self.ExecProcess(Args,Shell=False,Redirect=None,Detached=True)
         if Status==False:
           return DispatcherResult.DispatcherError(Output)
         else:
@@ -494,7 +506,7 @@ class CommandDispatcher:
       #Execute in background
       elif Background==True:
         BackgroundCmd=f"python {__file__} --config {self.Config["config_file_path"]} --skip-init --command \"{Cmd}\""
-        RetCode,Pid=self.ExecProcess(BackgroundCmd,Redirect=False,Detached=True)
+        RetCode,Pid=self.ExecProcess(BackgroundCmd,Redirect=None,Detached=True)
         if RetCode==0:
           terminal.Write(f"Process launched in backgrpund (pid={Pid})")
           return DispatcherResult.Ok()

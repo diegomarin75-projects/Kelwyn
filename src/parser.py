@@ -103,12 +103,13 @@ class CommandParser:
     QuotedToken=False
     AbsStartPos=Start
     ProcessedChars=0
+    Cmd=Command.strip()
     
     #Loop over chars
-    while Index<len(Command):
+    while Index<len(Cmd):
       
       #Get current char
-      Char=Command[Index]
+      Char=Cmd[Index]
       
       #Double quotes
       if Char=="\"":
@@ -117,30 +118,30 @@ class CommandParser:
         QuotedToken=True
       
       #Escaped quotes
-      elif Char=="\\" and Index+1<len(Command)-1 and Command[Index+1]=="\"":
+      elif Char=="\\" and Index+1<len(Cmd)-1 and Cmd[Index+1]=="\"":
         Token+="\""
         ProcessedChars=2
 
-      #Symbol tokens
-      elif QuotedStringMode==False and any([Command[Index:].startswith(Symbol["value"]) for Symbol in SYMBOL_TOKENS]):
-        Symbol=[Symbol for Symbol in SYMBOL_TOKENS if Command[Index:].startswith(Symbol["value"])][0]
+      #Symbol tokens (must be betweeen spaces)
+      elif QuotedStringMode==False and Index>0 and any([Cmd[Index-1:].startswith(" "+Symbol["value"]+" ") for Symbol in SYMBOL_TOKENS]):
+        Symbol=[Symbol for Symbol in SYMBOL_TOKENS if Cmd[Index:].startswith(Symbol["value"])][0]
+        AbsEndPos=Start+Index+ProcessedChars  
         ProcessedChars+=len(Symbol["value"])
-        AbsEndPos=Start+Index+ProcessedChars-1
         Tokens.append({"type":"symbol","start":AbsStartPos,"end":AbsEndPos,"value":Symbol["value"],"name":Symbol["name"]})
         AbsStartPos=Start+Index+ProcessedChars
       
       #If current position starts with built-in function, find matching ending parenthesis and make recursive call to parse inner command
-      elif QuotedStringMode==False and any([Command[Index:].startswith(func+"(")==True for func in BUILTIN_FUNCTIONS]):
-        FunctionName=Command[Index:Command.find("(",Index)]
-        EndIndex=self._FindEndingParenthesis(Command,Index)
+      elif QuotedStringMode==False and any([Cmd[Index:].startswith(func+"(")==True for func in BUILTIN_FUNCTIONS]):
+        FunctionName=Cmd[Index:Cmd.find("(",Index)]
+        EndIndex=self._FindEndingParenthesis(Cmd,Index)
         if EndIndex==-1:
           Message=f"Unmatched parenthesis in command at position {Start+Index}"
           return PARSER_ERROR_UNMATCHED_PARENTHESIS,Message,None
         elif EndIndex==-2:
-          Message=f"Open quoted string in command at position {Start+Command.rfind('\"')}"
+          Message=f"Open quoted string in command at position {Start+Cmd.rfind('\"')}"
           return PARSER_ERROR_OPEN_QUOTED_STRING,Message,None
         CommandIndex=Index+len(FunctionName)+1
-        InnerCommand=Command[CommandIndex:EndIndex]
+        InnerCommand=Cmd[CommandIndex:EndIndex]
         RetCode,Message,InnerTokens=self.Parse(InnerCommand,CommandIndex)
         if RetCode!=PARSER_OK:
           return RetCode,Message,None
@@ -153,6 +154,7 @@ class CommandParser:
       elif Char==" ":
         if QuotedStringMode==True:
           Token+=Char
+          ProcessedChars=1
         else:
           if len(Token)!=0:
             AbsEndPos=Start+Index-1
@@ -160,8 +162,8 @@ class CommandParser:
             Tokens.append({"type":"string","start":AbsStartPos,"end":AbsEndPos,"value":Token,"raw":RawValue})
             Token=""
             QuotedToken=False
-            AbsStartPos=Start+Index+1
-        ProcessedChars=1
+          AbsStartPos=Start+Index+1
+          ProcessedChars=1
       
       #Anything else is part of the current token
       else:
@@ -183,7 +185,7 @@ class CommandParser:
       return PARSER_ERROR_OPEN_QUOTED_STRING,Message,None
     
     #Debug message
-    debug.Get().Send(f"Parser output: Command={Command!r} Tokens={Tokens!r}")
+    debug.Get().Send(f"Parser output: Command={Cmd!r} Tokens={Tokens!r}")
     
     #Return tokenized command
     return PARSER_OK,"",Tokens

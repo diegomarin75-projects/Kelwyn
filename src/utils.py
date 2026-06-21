@@ -1,6 +1,8 @@
 #Import libraries
 import os
+import re
 import json
+import platform
 import subprocess
 import importlib.util
 import const
@@ -63,6 +65,36 @@ def JsonFileParser(FilePath):
   #Return result
   return True,"",JsonObj
   
+# ---------------------------------------------------------------------------
+# File path conversion display format to internal
+# Args:
+# - Str (string): String containing a file path
+# - Config (dict): JSON configuration file
+# Returns:
+# - string: Internal representation 
+# ---------------------------------------------------------------------------
+def FilePathDisp2Intr(Str,Config):
+  if platform.system()=="Windows":
+    Result=Str.replace("~",Config["kelwyn_home"])
+  else:
+    Result=Str
+  return Result
+
+# ---------------------------------------------------------------------------
+# File path conversion internal format to display
+# Args:
+# - Str (string): String containing a file path
+# - Config (dict): JSON configuration file
+# Returns:
+# - string: Display representation
+# ---------------------------------------------------------------------------
+def FilePathIntr2Disp(Str,Config):
+  if platform.system()=="Windows":
+    Result=re.sub(re.escape(Config["kelwyn_home"]),"~",Str,flags=re.IGNORECASE)
+  else:
+    Result=Str
+  return Result
+
 # ---------------------------------------------------------------------------
 # Checks file path is accessible
 # Args:

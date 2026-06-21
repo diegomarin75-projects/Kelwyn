@@ -1,7 +1,6 @@
 #Import libraries
 import os
 import re
-import platform
 import getpass
 import socket
 import subprocess
@@ -142,7 +141,7 @@ class TabCompleter:
     OptionBoxHeight=(terminal.GetTerminalSize()[0]-2 if OptionBoxHeight>terminal.GetTerminalSize()[0]-2 else OptionBoxHeight)
     
     #Replace home directory in command buffer
-    Cmd=CommandBuffer.replace("~",self.Config["kelwyn_home"])
+    Cmd=utils.FilePathDisp2Intr(CommandBuffer,self.Config)
     
     #Get the search string by substituting the token at offset with token tag
     SearchString,SearchToken,Added=self._GetSearchString(Cmd,Offset)
@@ -198,10 +197,7 @@ class TabCompleter:
     Completed=SearchString.replace(TOKEN_TAG,SelectedOption,1)
 
     #Replace home directory
-    if platform.system()=="Windows":
-      Completed=re.sub(re.escape(self.Config["kelwyn_home"]),"~",Completed,flags=re.IGNORECASE)
-    else:
-      Completed=Completed.replace(self.Config["kelwyn_home"],"~")
+    Completed=utils.FilePathIntr2Disp(Completed,self.Config)
 
     #Return completed command
     return Completed
