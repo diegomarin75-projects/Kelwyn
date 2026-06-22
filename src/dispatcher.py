@@ -257,7 +257,7 @@ class CommandDispatcher:
   # - string: Command output when Capture is not None, Process Pid when Detached is True, else None
   # ---------------------------------------------------------------------------
   def ExecProcess(self,Command,Shell=True,Capture=None,Detached=False):
-    debug.Get().Send(f"Execute process input: {Command} Shell={Shell} Capture={Capture} Detached={Detached}")
+    debug.Get().Send(f"Execute process call: {Command} Shell={Shell} Capture={Capture} Detached={Detached}")
     try:
       if Capture=="1":
         Proc=subprocess.Popen(Command,shell=Shell,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True,encoding="utf-8")
@@ -293,7 +293,7 @@ class CommandDispatcher:
       Output=f"Command execution exception: {Ex}"
       ReturnCode=None
       Status=False
-    debug.Get().Send(f"Execute process output: Status={Status} ReturnCode={ReturnCode} Output='{Output.replace("\n","\\n") if Output!=None else Output}'")
+    debug.Get().Send(f"Execute process result: Status={Status} ReturnCode={ReturnCode} Output='{Output.replace("\n","\\n") if Output!=None else Output}'")
     return Status,ReturnCode,Output
 
   # -------------------------------------------------------------------------------------------------------------------
@@ -321,6 +321,15 @@ class CommandDispatcher:
       Background=True
     else:
       Background=False
+
+    #Find python command for background execution
+    if Background==True:
+      PythonProgram=shutil.which("python")
+      if PythonProgram==None:
+        Message=f"Python command is not found (required for launching file redirection in background)"
+        return DispatcherResult.DispatcherError(Message)
+    else:
+      PythonProgram=None
 
     #Replace in command all environment variables like {{name}} with their value from environment
     #Vaiables not found in environment are not replaced and are left as they are in the command string
@@ -363,12 +372,11 @@ class CommandDispatcher:
         else:
           return DispatcherResult.ExternalError(RetCode,Output)
       else:
-        Status,RetCode,Pid=self.ExecProcess(Cmd,Capture=None,Detached=True)
+        Status,RetCode,Output=self.ExecProcess(Cmd,Capture=None,Detached=True)
         if Status==False:
           return DispatcherResult.DispatcherError(Output)
-        else:
-          terminal.Write(f"Process launched in backgrpund (pid={Pid})")
-          return DispatcherResult.Ok()
+        terminal.Write(f"Process launched in backgrpund (pid={Output})")
+        return DispatcherResult.Ok()
     
     #Find most inner built-in function calls and execute
     while True:
@@ -443,6 +451,10 @@ class CommandDispatcher:
       or Tokens[-1]["type"]!="string":
         Message=f"Redirection syntax is: <command> <redirection_operator> <file>"
         return DispatcherResult.DispatcherError(Message)
+      if GetOutput==True:
+        Message=f"Cannot get output of command if file redirection is enabled"
+        return DispatcherResult.DispatcherError(Message)
+      RedirectionOperator=Tokens[-2]["value"]
       RedirectionPipeMode={"out":"1","err":"2","all":"all"}.get(Tokens[-2]["name"].split("_")[1])
       RedirectionFileMode=Tokens[-2]["name"].split("_")[2]
       RedirectionFilePath=Tokens[-1]["value"]
@@ -450,32 +462,64 @@ class CommandDispatcher:
       Tokens=Tokens[:-2]
       debug.Get().Send(f"Redirection detected: PipeMode={RedirectionPipeMode} FileMode={RedirectionFileMode} FilePath={RedirectionFilePath}")
     else:
+      RedirectionOperator=None
       RedirectionPipeMode=None
       RedirectionFileMode=None
       RedirectionFilePath=None
     
     #External program execution
     if Tool not in self.CommandDir:
+
+      #Compose program path and arguments
       Program=shutil.which(Tool)
       if Program==None:
         Message=f"External command '{Tool}' is not found or not implemented"
         return DispatcherResult.DispatcherError(Message)
       Args=[Program]+[Token["value"] for Token in Tokens[1:]]
-      if Background==False:
+      
+      #Launch external program in background without file redirection
+      if Background==True and RedirectionOperator==None:
+        Status,RetCode,Output=self.ExecProcess(Args,Shell=False,Capture=None,Detached=True)
+        if Status==False:
+          return DispatcherResult.DispatcherError(Output)
+        terminal.Write(f"Process launched in backgrpund (pid={Output})")
+        return DispatcherResult.Ok()
+
+      #Launch external program in background with file redirection
+      elif Background==True and RedirectionOperator!=None:
+        BackgroundCmd=f"{Cmd} {RedirectionOperator} \"{RedirectionFilePath}\""
+        BackgroundArgs=[PythonProgram,__file__,"--config",self.Config["config_file_path"],"--skip-init","--command",BackgroundCmd]
+        Status,RetCode,Output=self.ExecProcess(BackgroundArgs,Shell=False,Capture=None,Detached=True)
+        if Status==False:
+          return DispatcherResult.DispatcherError(Output)
+        terminal.Write(f"Process launched in backgrpund (pid={Output})")
+        return DispatcherResult.Ok()
+
+      #Launch external program in foreground with file redirection
+      elif RedirectionOperator!=None:
+        Status,RetCode,Output=self.ExecProcess(Args,Shell=False,Capture=RedirectionPipeMode)
+        if Status==False:
+          return DispatcherResult.DispatcherError(Output)
+        elif RetCode!=0:
+          return DispatcherResult.ExternalError(RetCode)
+        try:
+          OpenMode={"new":"w","apd":"a"}.get(RedirectionFileMode)
+          File=open(RedirectionFilePath,OpenMode,encoding="utf-8")
+          File.write(Output)
+          File.close()
+        except Exception as Ex:
+          Message=f"Error writing to file '{RedirectionFilePath}': {Ex}"
+          return DispatcherResult.DispatcherError(Message)
+        return DispatcherResult.Ok()
+
+      #Launch external program in foreground without file redirection
+      else:
         Status,RetCode,Output=self.ExecProcess(Args,Shell=False,Capture="all" if GetOutput==True else None)
         if Status==False:
           return DispatcherResult.DispatcherError(Output)
-        elif RetCode==0:
-          return DispatcherResult.Ok(Output)
-        else:
-          return DispatcherResult.ExternalError(RetCode,Output)
-      else:
-        Status,RetCode,Pid=self.ExecProcess(Args,Shell=False,Capture=None,Detached=True)
-        if Status==False:
-          return DispatcherResult.DispatcherError(Output)
-        else:
-          terminal.Write(f"Process launched in backgrpund (pid={Pid})")
-          return DispatcherResult.Ok()
+        elif RetCode!=0:
+          return DispatcherResult.ExternalError(RetCode)
+        return DispatcherResult.Ok(Output)
     
     #Check if command module has Get and Execute functions
     if self.CommandDir[Tool]["get"]==None or self.CommandDir[Tool]["execute"]==None:
@@ -492,7 +536,7 @@ class CommandDispatcher:
     #Execute command
     try:
       
-      #Execution in output redirection mode
+      #Execution in output get mode
       if GetOutput==True:
         Buffer=io.StringIO()
         with redirect_stdout(Buffer), redirect_stderr(Buffer):
@@ -500,26 +544,58 @@ class CommandDispatcher:
           Output=Buffer.getvalue()
         if Status==False:
           return DispatcherResult.CommandError(Output)
-        else:
-          return DispatcherResult.Ok(Output)
+        return DispatcherResult.Ok(Output)
       
-      #Execute in background
-      elif Background==True:
-        BackgroundCmd=f"python {__file__} --config {self.Config["config_file_path"]} --skip-init --command \"{Cmd}\""
-        RetCode,Pid=self.ExecProcess(BackgroundCmd,Capture=None,Detached=True)
-        if RetCode==0:
-          terminal.Write(f"Process launched in backgrpund (pid={Pid})")
-          return DispatcherResult.Ok()
-        else:
-          return DispatcherResult.DispatcherError(RetCode,Output)
+      #Execute in background without file redirection
+      elif Background==True and RedirectionOperator==None:
+        BackgroundArgs=[PythonProgram,__file__,"--config",self.Config["config_file_path"],"--skip-init","--command",Cmd]
+        Status,RetCode,Output=self.ExecProcess(BackgroundArgs,Shell=False,Capture=None,Detached=True)
+        if Status==False:
+          return DispatcherResult.DispatcherError(Output)
+        terminal.Write(f"Process launched in backgrpund (pid={Output})")
+        return DispatcherResult.Ok()
+
+      #Execute in background with file redirection
+      elif Background==True and RedirectionOperator!=None:
+        BackgroundCmd=f"{Cmd} {RedirectionOperator} \"{RedirectionFilePath}\""
+        BackgroundArgs=[PythonProgram,__file__,"--config",self.Config["config_file_path"],"--skip-init","--command",BackgroundCmd]
+        Status,RetCode,Output=self.ExecProcess(BackgroundArgs,Shell=False,Capture=None,Detached=True)
+        if RetCode!=0:
+          return DispatcherResult.DispatcherError(Output)
+        terminal.Write(f"Process launched in backgrpund (pid={Output})")
+        return DispatcherResult.Ok()
       
-      #Normal execution
+      #Normal execution with file redirection
+      elif RedirectionOperator!=None:
+        Buffer=io.StringIO()
+        if RedirectionPipeMode=="1":
+          with redirect_stdout(Buffer):
+            Status=self.CommandDir[Tool]["execute"](CmdOptions,self.Config)
+        elif RedirectionPipeMode=="2":
+          with redirect_stderr(Buffer):
+            Status=self.CommandDir[Tool]["execute"](CmdOptions,self.Config)
+        elif RedirectionPipeMode=="all":
+          with redirect_stdout(Buffer), redirect_stderr(Buffer):
+            Status=self.CommandDir[Tool]["execute"](CmdOptions,self.Config)
+        Output=Buffer.getvalue()
+        if Status==False:
+          return DispatcherResult.CommandError()
+        try:
+          OpenMode={"new":"w","apd":"a"}.get(RedirectionFileMode)
+          File=open(RedirectionFilePath,OpenMode,encoding="utf-8")
+          File.write(Output)
+          File.close()
+        except Exception as Ex:
+          Message=f"Error writing to file '{RedirectionFilePath}': {Ex}"
+          return DispatcherResult.DispatcherError(Message)
+        return DispatcherResult.Ok()
+    
+      #Normal execution without file redirection
       else:
         Status=self.CommandDir[Tool]["execute"](CmdOptions,self.Config)
         if Status==False:
           return DispatcherResult.CommandError()
-        else:
-          return DispatcherResult.Ok()
+        return DispatcherResult.Ok()
     
     #Command execution exception handler
     except Exception as Ex:
