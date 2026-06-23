@@ -1,7 +1,7 @@
 --- Kelwyn lang project notes file ---
 
 # Open tasks:
-2026-06-11_210712 : Implement execute process in background &
+2026-06-22_063012 : When calling background processes calling kelwyn itself we must pass a parameter to avoid truncation of history and debug log
 2026-06-11_210934 : Implement multiple command execution ;
 2026-06-11_211056 : Implement ps and kill commands
 2026-06-11_211101 : Implement redirection and pipe operators
@@ -12,6 +12,15 @@
 2026-06-06_234811 : Implement line and inline comments
 
 # Completed tasks:
+[DONE] 2026-06-20_151421 : Error in parser: [06/20·151315] (beta) ~\75_repos\projects\Kelwyn\beta (beta:3*) > dirs P1> out.txt
+[DONE]                     Redirection operator: {'type': 'symbol', 'start': 5, 'end': 8, 'value': '1>', 'name': 'redirect_out_new'}
+[DONE]                     Redirection file: {'type': 'string', 'start': 9, 'end': 15, 'value': 'Pout.txt', 'raw': 'Pout.txt'}
+[DONE]                     Cmd: dirs Tokens: [{'type': 'string', 'start': 0, 'end': 3, 'value': 'dirs', 'raw': 'dirs'}]
+[DONE]                     Error: External command 'dirs' is not found or not implemented
+[DONE] 2026-06-20_151047 : Home symbol ~ implementation works well only for windows, on linux it is naturally supported, potential issue
+[DONE] 2026-06-17_064319 : Kelwyn must use \" to escape quotes inside strings like python (it is more consistent and causing less trouble)
+[DONE] 2026-06-13_210934 : Implement unified color settings routine so rgb or terminal color can be set same way
+[DONE] 2026-06-11_210712 : Implement execute process in background &
 [DONE] 2026-06-02_072907 : Paste with selection active does not overwrite selected text
 [DONE] 2026-06-02_072936 : Typing with selection active does not overwrite selected text
 [DONE] 2026-06-10_074112 : Use this single command to speed up the git info whippet as it gives all: git status --porcelain=v1 --branch --ahead-behind --untracked-files=all

@@ -13,11 +13,9 @@ def Whippet(Config):
   GitInfoTimeoutSecs=Config.get("git_info_timeout_secs",const.DEFAULT_GIT_INFO_TIMEOUT_SECS)
 
   #Get git information (failure means not inside a git repo / Cancel / Timeout)
-  RetCode,Output=utils.Exec("git status --porcelain=v1 --branch --ahead-behind --untracked-files=all",Timeout=GitInfoTimeoutSecs)
-  if RetCode==-1:
-    " "+ansi.SetRgb(GitConflictColor)+"(cancel)"+ansi.ResetColor()
-  elif RetCode==-2:
-    " "+ansi.SetRgb(GitConflictColor)+"(timeout)"+ansi.ResetColor()
+  Status,RetCode,Output=utils.Exec("git status --porcelain=v1 --branch --ahead-behind --untracked-files=all",Timeout=GitInfoTimeoutSecs)
+  if Status==False:
+    return " "+ansi.SetFgColor(GitConflictColor)+"(error)"+ansi.ResetColor()
   elif RetCode != 0:
     return ""
 
@@ -74,4 +72,4 @@ def Whippet(Config):
     Color=GitCleanColor
 
   #Return information
-  return " "+ansi.SetRgb(Color)+Info+ansi.ResetColor()
+  return " "+ansi.SetFgColor(Color)+Info+ansi.ResetColor()

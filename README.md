@@ -22,9 +22,13 @@ kelwyn ~/projects > _
 - **Modular dynamic prompt**: Custom placeholders called **whippets** (`<cwd>`, `<git>`, `<hour>`, etc.) that automatically resolve in the prompt.
 - **Template-style environment interpolation**: use `{{VARNAME}}` placeholders anywhere in a command before execution.
 - **Inline expression and command evaluation**: use `eval(<python_expression>)` and `exec(<command>)` directly inside commands, with nested inner-first resolution.
+- **Single-command mode**: run one command with `--command` and exit (automation-friendly).
+- **Output redirection and background execution**: redirect stdout/stderr to files and launch commands in background.
+- **System command integration**: run external commands directly, with configurable shell pass-through commands.
 - **Built-in command system with structured help**: command metadata, option parsing, examples, and `help` / `--help` support.
 - **Comprehensive configuration**: External JSON-based configuration (`cfg/kelwyn-cfg.json`) to manage history/log paths, UI behavior, and detailed color schemes.
-- **Advanced UI styling**: Support for HEX color codes and ANSI sequences for directory listings, git status (clean/dirty/conflict), and completion menus.
+- **Advanced UI styling**: Support for HEX color codes and named ANSI colors for directory listings, git status (clean/dirty/conflict), and completion menus.
+- **Windows-friendly path UX**: `~` expansion/conversion in command handling, completion, and prompt cwd rendering.
 - **Extensible architecture**: easily add new commands, completers, and prompt whippets by dropping Python modules into designated folders.
 
 ---
@@ -41,6 +45,7 @@ kelwyn ~/projects > _
 
 ```bash
 python src/kelwyn.py --run
+python src/kelwyn.py --command "print hello"
 python src/kelwyn.py --run --skip-init
 python src/kelwyn.py --run --init-command "print hello"
 python src/kelwyn.py --run --init-script path/to/init.kel
@@ -51,6 +56,8 @@ python src/kelwyn.py --run --debug-log path/to/.kelwyn_debug.log
 ### CLI flags
 
 - `--run`: start interactive shell mode
+- `--command CMD`: execute one command and exit
+- `--config PATH`: use a custom configuration file
 - `--skip-init`: skip default startup commands
 - `--init-command CMD`: run one command at startup before prompt
 - `--init-script PATH`: execute script file line by line at startup
@@ -60,7 +67,8 @@ python src/kelwyn.py --run --debug-log path/to/.kelwyn_debug.log
 ### Notes
 
 - If neither `--run` nor `--command` is provided, Kelwyn prints help and exits.
-- `--command` is currently parsed by argparse but not executed as a one-shot command in this version.
+- `--run` and `--command` are mutually exclusive.
+- In `--command` mode, Kelwyn executes startup init hooks first (unless skipped), then runs the command and exits.
 
 ---
 
@@ -91,14 +99,16 @@ Kelwyn uses an external JSON configuration file at `cfg/kelwyn-cfg.json`. This f
 ### Key Configuration Settings
 
 - **File Paths**: `history_file` and `debug_log_file` locations.
+- **Shell pass-through list**: `pass_through_commands` defines commands executed through host shell behavior.
 - **System Prompt**: Template string using whippets (e.g., `"<month>/<day>·<hour><min><sec>"`).
 - **Interface Limits**: Max history lines, debug log size, and UI component heights.
-- **Color Customization**: Support for HEX codes (e.g., `"#FF5555"`) across all UI elements:
+- **Color Customization**: Support for HEX codes (e.g., `"#FF5555"`) and ANSI color names (e.g., `"bright_cyan"`) across all UI elements:
   - Error messages and ghost suggestions.
   - Selection colors (foreground/background).
   - Completion and Command Box styling.
   - Directory listing colors (`global_dir_color`, `global_file_color`).
   - Git status colors (`git_clean_color`, `git_dirty_color`, `git_conflict_color`).
+  - Stable mode color (`stable_mode_color`).
   - Beta mode indicator (`beta_mode_color`).
 
 ---
@@ -107,10 +117,45 @@ Kelwyn uses an external JSON configuration file at `cfg/kelwyn-cfg.json`. This f
 
 - Tokens are space-separated.
 - Quoted strings use double quotes.
-- To include `"` inside a quoted string, escape it by doubling (`""`).
+- To include `"` inside a quoted string, escape it as `\"`.
 - Built-in function tokens:
   - `eval(...)`
   - `exec(...)`
+
+### Output redirection
+
+Kelwyn supports these redirection operators:
+
+- `>` / `1>`: stdout overwrite
+- `>>` / `1>>`: stdout append
+- `2>`: stderr overwrite
+- `2>>`: stderr append
+- `&>`: stdout+stderr overwrite
+- `&>>`: stdout+stderr append
+
+Examples:
+
+```text
+print hello > out.txt
+python my_tool.py 2>> err.log
+git status &> all.log
+```
+
+Notes:
+
+- Redirection syntax is `<command> <operator> <file>`.
+- Use spaces around the redirection operator.
+
+### Background execution
+
+- End a command with ` &` to launch it in background.
+- Background launch cannot be combined with command output capture mode.
+
+Example:
+
+```text
+python long_task.py &
+```
 
 ### Environment variable placeholders
 
@@ -185,7 +230,7 @@ Supported prompt placeholders (Whippets):
 - `<min>`: minute (`00`-`59`)
 - `<sec>`: second (`00`-`59`)
 - `<appname>`: application name (`kelwyn`)
-- `<cwd>`: current working directory (absolute path)
+- `<cwd>`: current working directory (display path; may use `~` on Windows)
 - `<user>`: current OS username
 - `<hostname>`: machine hostname
 - `<git>`: git status segment for current directory (empty when not in a git repo)
@@ -399,12 +444,15 @@ Options:
 ## External command execution
 
 - Commands starting with `$` are executed by host shell directly.
-- Unknown commands are also passed through to host shell.
+- Commands listed in `pass_through_commands` are executed with host shell behavior.
+- Other non-built-in commands are executed as external programs when found in `PATH`.
+- If an external command is not found, Kelwyn returns a dispatcher error.
 
 Examples:
 
 ```text
 $git status
+dir
 python --version
 ```
 
@@ -424,7 +472,7 @@ Modules are loaded at startup automatically.
 
 1. Create a new file in `src/commands`, for example `hello.py`.
 2. Export `Get()` with command metadata (`name`, `description`, `options`, optional `examples`).
-3. Export `Execute(Options)` that performs the command and returns `True` on success or `False` on error.
+3. Export `Execute(Options, Config)` that performs the command and returns `True` on success or `False` on error.
 
 Minimal example:
 
@@ -442,7 +490,7 @@ def Get():
     ]
   }
 
-def Execute(Options):
+def Execute(Options, Config):
   Name=Options.Name if Options.Name is not None else "world"
   print(f"Hello, {Name}!")
   return True
@@ -466,7 +514,7 @@ def Selector():
     {"type":"hello_name","regex":r"^hello\s+@token$","completer":CompleteHelloNames}
   ]
 
-def CompleteHelloNames(Token):
+def CompleteHelloNames(Token, Config):
   Names=["Diego","Kelwyn","World"]
   return [
     {"text":Name,"value":Name,"color":"#7F7F7F"}

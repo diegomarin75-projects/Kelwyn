@@ -11,12 +11,13 @@ _DebugLog=None
 # Args:
 # - DebugLogFile (string): Path to the debug log file, or None to disable logging
 # - MaxLines (int): Maximum number of lines to keep in the log file
+# - NoTruncate (bool): If True, do not truncate the log file when it exceeds MaxLines
 # - Config (dict): JSON Configuration file
 # Returns: None
 # ---------------------------------------------------------------------------
-def Init(DebugLogFile,MaxLines,Config):
+def Init(DebugLogFile,MaxLines,NoTruncate,Config):
   global _DebugLog
-  _DebugLog=DebugLog(DebugLogFile,MaxLines,Config)
+  _DebugLog=DebugLog(DebugLogFile,MaxLines,NoTruncate,Config)
 
 # ---------------------------------------------------------------------------
 # Return the module-level debug log singleton instance
@@ -37,10 +38,11 @@ class DebugLog:
   # Args:
   # - DebugLogFile (string): Path to the debug log file, or None to disable logging
   # - MaxLines (int): Maximum number of lines to keep in the log file before truncating
+  # - NoTruncate (bool): If True, do not truncate the log file when it exceeds MaxLines
   # - Config (dict): JSON Configuration file
   # Returns: None
   # -------------------------------------------------------------------------
-  def __init__(self,DebugLogFile,MaxLines,Config):
+  def __init__(self,DebugLogFile,MaxLines,NoTruncate,Config):
     
     #Initialize debug log
     self.Config=Config
@@ -48,13 +50,15 @@ class DebugLog:
     self.MaxLines=MaxLines
 
     #Truncate log file if it exceeds max lines
-    if DebugLogFile!=None and os.path.isfile(DebugLogFile):
+    if DebugLogFile!=None and os.path.isfile(DebugLogFile) and NoTruncate==False:
       with open(DebugLogFile,"r",encoding="utf-8") as File:
         Lines=File.readlines()
       if len(Lines)>MaxLines:
         with open(DebugLogFile,"w",encoding="utf-8") as File:
           File.writelines(Lines[-MaxLines:])
-      self.Send("-"*120, Raw=True)  
+    
+    #Signal start in debug log
+    self.Send("-"*120, Raw=True)
 
   # -------------------------------------------------------------------------
   # Append a timestamped debug message to the log file

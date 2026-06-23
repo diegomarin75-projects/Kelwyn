@@ -4,6 +4,9 @@
   "history_file": ".kelwyn_history",
   "debug_log_file": ".kelwyn_debug.log",
   
+  //Pass-through commands (executed on host shell by default)
+  "pass_through_commands":["dir","copy","del","mkdir","rmdir"],
+  
   //System prompt
   "system_prompt":"{%94m%}[<month>/<day>·<hour><min><sec>]{%0m%}<beta> {%92m%}<cwd>{%0m%}<git> {%90m%}>{%0m%} ",
   
@@ -16,27 +19,52 @@
   //Git info timeout (seconds)
   "git_info_timeout_secs":10,
   
-  //Colors
-  "error_message_color":"#FF0000",
-  "ghost_suggestion_color":"#505050",
-  "selection_foreground_color":"#FFFF00",
-  "selection_background_color":"#0000FF",
-  "completer_option_highlight_color":"#303030",
-  "completer_option_background_color":null,
-  "completer_status_foreground_color":"#909090",
-  "completer_status_background_color":"#303030",
-  "command_box_item_foreground_color":"#7F7F7F",
-  "command_box_item_highlight_color":"#0000C0",
-  "command_box_item_background_color":"#202020",
+  //Colors (use hex format #RRGGBB or standard ANSI color names)
+  "error_message_color"                :"#FF0000",
+  "ghost_suggestion_color"             :"#505050",
+  "selection_foreground_color"         :"#FFFF00",
+  "selection_background_color"         :"#0000FF",
+  "completer_option_highlight_color"   :"#303030",
+  "completer_option_background_color"  :null,
+  "completer_status_foreground_color"  :"#909090",
+  "completer_status_background_color"  :"#303030",
+  "command_box_item_foreground_color"  :"#7F7F7F",
+  "command_box_item_highlight_color"   :"#0000C0",
+  "command_box_item_background_color"  :"#202020",
   "command_box_status_foreground_color":"#C0C0C0",
   "command_box_status_background_color":"#A00000",
-  "global_dir_color":"#40B0FF",
-  "global_file_color":"#7F7F7F",
-  "global_dir_header_color":"#FF7F7F",
-  "git_clean_color":"#FF5555",
-  "git_dirty_color":"#FF50FF",
-  "git_conflict_color":"#FFFF00",
-  "git_branch_color":"#909090",
-  "beta_mode_color":"#00FFFF"
+  "global_dir_color"                   :"#40B0FF",
+  "global_file_color"                  :"#7F7F7F",
+  "global_dir_header_color"            :"#FF7F7F",
+  "git_clean_color"                    :"#FF5555",
+  "git_dirty_color"                    :"#FF50FF",
+  "git_conflict_color"                 :"#FFFF00",
+  "git_branch_color"                   :"#909090",
+  "stable_mode_color"                  :"#007F00",
+  "beta_mode_color"                    :"#00FFFF" 
+ 
+  //Alternative using ANSI color names:
+  //"error_message_color"                :"bright_red",
+  //"ghost_suggestion_color"             :"bright_black",
+  //"selection_foreground_color"         :"bright_yellow",
+  //"selection_background_color"         :"bright_blue",
+  //"completer_option_highlight_color"   :"bright_black",
+  //"completer_option_background_color"  :null,
+  //"completer_status_foreground_color"  :"bright_whitek",
+  //"completer_status_background_color"  :"bright_black",
+  //"command_box_item_foreground_color"  :"dark_white",
+  //"command_box_item_highlight_color"   :"dark_blue",
+  //"command_box_item_background_color"  :"bright_black",
+  //"command_box_status_foreground_color":"bright_white",
+  //"command_box_status_background_color":"bright_red",
+  //"global_dir_color"                   :"bright_cyan",
+  //"global_file_color"                  :"dark_white",
+  //"global_dir_header_color"            :"bright_red",
+  //"git_clean_color"                    :"bright_red",
+  //"git_dirty_color"                    :"bright_magenta",
+  //"git_conflict_color"                 :"bright_yellow",
+  //"git_branch_color"                   :"bright_black",
+  //"stable_mode_color"                  :"dark_green",
+  //"beta_mode_color"                    :"bright_cyan"   
 
 }

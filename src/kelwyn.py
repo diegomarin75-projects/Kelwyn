@@ -19,18 +19,19 @@ def Main():
 
   #Set up argument parser
   ArgParser=argparse.ArgumentParser(description=f"{const.APP_NAME} - A cross-platform command-line shell interpreter",add_help=True)
-  ArgParser.add_argument("--run",dest="Run",action="store_true",help="Start the shell",default=False)
+  RunGroup=ArgParser.add_mutually_exclusive_group()
+  RunGroup.add_argument("--run",dest="Run",action="store_true",help="Start the shell",default=False)
+  RunGroup.add_argument("--command",dest="Command",type=str,metavar="CMD",help="Execute a command and exit",default=None)
   ArgParser.add_argument("--config",dest="ConfigFile",type=str,metavar="PATH",help="Path to config file (default: same directory as python script)",default=None)
   ArgParser.add_argument("--history",dest="HistoryFile",type=str,metavar="PATH",help="Path to history file (default: same directory as python script)",default=None)
   ArgParser.add_argument("--debug-log",dest="DebugLogFile",type=str,metavar="PATH",help="Path to debug log file (default: same directory as python script)",default=None)
   ArgParser.add_argument("--skip-init",dest="SkipInit",action="store_true",help="Skip the init script (use with --run or --command)",default=False)
   ArgParser.add_argument("--init-command",dest="InitCommand",type=str,metavar="CMD",help="Command to execute at startup (use with --run)",default=None)
   ArgParser.add_argument("--init-script",dest="InitScript",type=str,metavar="PATH",help="Path to init script to execute at startup (use with --run)",default=None)
-  ArgParser.add_argument("--command",dest="Command",type=str,metavar="CMD",help="Execute a command and exit (command is parsed as other shell commands)",default=None)
   Args=ArgParser.parse_args()
   
   #If no arguments provided,print help and exit
-  if Args.Run==False and len(Args.Command)==0:
+  if Args.Run==False and Args.Command==None:
     ArgParser.print_help()
     sys.exit(0)
 
@@ -76,16 +77,26 @@ def Main():
   MaxDebugLines=Config.get("max_debug_lines",const.MAX_DEBUG_LINES)
   MaxHistoryCommands=Config.get("max_history_commands",const.MAX_HISTORY_COMMANDS)
 
+  #If executed for single command avoid truncation (debug log and history)
+  NoTruncate=(True if Args.Command!=None else False)
+  
   #Initialize debug log
-  debug.Init(DebugLogFile,MaxDebugLines,Config)
+  debug.Init(DebugLogFile,MaxDebugLines,NoTruncate,Config)
+
+  #Signal start in debug log
+  debug.Get().Send(f"{const.APP_NAME} v{const.VERSION} started ({"command mode: "+Args.Command if Args.Command!=None else "run mode"})")
 
   #Init terminal mode, call shell
   try:
     terminal.SetRawTerminalMode()
-    Sh=shell.Shell(Args.Command,Args.SkipInit,Args.InitCommand,Args.InitScript,const.VERSION,CommandsFolder,CompletersFolder,WhippetsFolder,HistoryFile,MaxHistoryCommands,Config)
+    Sh=shell.Shell(Args.Command,Args.SkipInit,Args.InitCommand,Args.InitScript,const.VERSION,CommandsFolder,\
+                   CompletersFolder,WhippetsFolder,HistoryFile,MaxHistoryCommands,NoTruncate,Config)
     Sh.Run()
   finally:
     terminal.RestoreTerminalMode()
+  
+  #Signal exit in debug log
+  debug.Get().Send(f"{const.APP_NAME} v{const.VERSION} terminated ({"command mode: "+Args.Command if Args.Command!=None else "run mode"})")
 
 #Entry point
 if __name__=="__main__":

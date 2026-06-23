@@ -25,13 +25,13 @@ ASCII_BANNER=rf"""
 ██║ ██╗████╗█████╗╚███╔███╔╝   ██║   ██║ ╚███║
 ╚═╝ ╚═╝╚═══╝╚════╝ ╚══╝╚══╝    ╚═╝   ╚═╝  ╚══╝  (v<version>)
 """ \
-.replace("█",ansi.SetRgb(BANNER_COLOR1)+"█"+ansi.ResetColor()) \
-.replace("╗",ansi.SetRgb(BANNER_COLOR2)+"╗"+ansi.ResetColor()) \
-.replace("╔",ansi.SetRgb(BANNER_COLOR2)+"╔"+ansi.ResetColor()) \
-.replace("╚",ansi.SetRgb(BANNER_COLOR2)+"╚"+ansi.ResetColor()) \
-.replace("║",ansi.SetRgb(BANNER_COLOR2)+"║"+ansi.ResetColor()) \
-.replace("╝",ansi.SetRgb(BANNER_COLOR3)+"╝"+ansi.ResetColor()) \
-.replace("═",ansi.SetRgb(BANNER_COLOR3)+"═"+ansi.ResetColor())
+.replace("█",ansi.SetFgColor(BANNER_COLOR1)+"█"+ansi.ResetColor()) \
+.replace("╗",ansi.SetFgColor(BANNER_COLOR2)+"╗"+ansi.ResetColor()) \
+.replace("╔",ansi.SetFgColor(BANNER_COLOR2)+"╔"+ansi.ResetColor()) \
+.replace("╚",ansi.SetFgColor(BANNER_COLOR2)+"╚"+ansi.ResetColor()) \
+.replace("║",ansi.SetFgColor(BANNER_COLOR2)+"║"+ansi.ResetColor()) \
+.replace("╝",ansi.SetFgColor(BANNER_COLOR3)+"╝"+ansi.ResetColor()) \
+.replace("═",ansi.SetFgColor(BANNER_COLOR3)+"═"+ansi.ResetColor())
 
 # Wellcome lines
 WELCOME_LINES=[

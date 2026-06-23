@@ -103,7 +103,7 @@ def Execute(Options,Config):
       FilesPerLine=max(1,TerminalCols//MaxLength)
       FileWidth=TerminalCols//FilesPerLine
       DisplayList=[File.ljust(FileWidth) for File in FileList]
-      DisplayList=[ansi.SetRgb(LsDirColor)+File+ansi.ResetColor() if File.strip().endswith(os.sep) else ansi.SetRgb(LsFileColor)+File+ansi.ResetColor() for File in DisplayList]
+      DisplayList=[ansi.SetFgColor(LsDirColor)+File+ansi.ResetColor() if File.strip().endswith(os.sep) else ansi.SetFgColor(LsFileColor)+File+ansi.ResetColor() for File in DisplayList]
 
       #Get file metadata when listing vertically
       if Options.ListVertical:
@@ -123,7 +123,7 @@ def Execute(Options,Config):
           DirName=Root[len(FilePath):].strip(os.sep)+":"
         else:
           DirName=Root.strip(os.sep)+":"
-        print(ansi.SetRgb(LsHeaderColor)+DirName+ansi.ResetColor())
+        print(ansi.SetFgColor(LsHeaderColor)+DirName+ansi.ResetColor())
       
       #Print file list
       NewLine=False

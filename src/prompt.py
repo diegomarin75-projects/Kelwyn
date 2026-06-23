@@ -67,6 +67,7 @@ class PromptBuilder:
         try:
           Value=self.Whippets[Whippet](self.Config)
         except Exception as Ex:
+          debug.Get().Send(f"Exception rendering whippet {Whippet}: {str(Ex)}")
           Value=Whippet+"!"
         Prompt=Prompt.replace("<"+Whippet+">",Value)
 

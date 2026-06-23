@@ -1,6 +1,8 @@
 #Import libraries
 import os
+import re
 import json
+import platform
 import subprocess
 import importlib.util
 import const
@@ -64,6 +66,36 @@ def JsonFileParser(FilePath):
   return True,"",JsonObj
   
 # ---------------------------------------------------------------------------
+# File path conversion display format to internal
+# Args:
+# - Str (string): String containing a file path
+# - Config (dict): JSON configuration file
+# Returns:
+# - string: Internal representation 
+# ---------------------------------------------------------------------------
+def FilePathDisp2Intr(Str,Config):
+  if platform.system()=="Windows":
+    Result=Str.replace("~",Config["kelwyn_home"])
+  else:
+    Result=Str
+  return Result
+
+# ---------------------------------------------------------------------------
+# File path conversion internal format to display
+# Args:
+# - Str (string): String containing a file path
+# - Config (dict): JSON configuration file
+# Returns:
+# - string: Display representation
+# ---------------------------------------------------------------------------
+def FilePathIntr2Disp(Str,Config):
+  if platform.system()=="Windows":
+    Result=re.sub(re.escape(Config["kelwyn_home"]),"~",Str,flags=re.IGNORECASE)
+  else:
+    Result=Str
+  return Result
+
+# ---------------------------------------------------------------------------
 # Checks file path is accessible
 # Args:
 # - FilePath (string): File or directory path to check
@@ -93,40 +125,29 @@ def IsAccessible(FilePath,QuickMode=False):
 # Execute a command and return its output and return code
 # Args:
 # - Command (string): Command to execute as a string
-# - Redirect (bool, default False): Whether to capture and return command output (stdout and stderr combined)
-# - Detached (bool, default False): Whether to launch process as detached
 # - Timeout (float, default None): Timeout in seconds for command execution, or None for no timeout
 # Returns:
-# - int: Command return code (0 for success, -1 Keyboard interrupt, -2 Timeout, >0 Error)
-# - string: Command output when Redirect is True, Process Pid when Detached is True, else None
+# - boolean: True=Process executed, False=Exception
+# - int: Command return code
+# - string: Command output
 # ---------------------------------------------------------------------------
-def Exec(Command,Redirect=True,Detached=False,Timeout=None):
+def Exec(Command,Timeout=None):
   try:
-    if Redirect==True:
-      Proc=subprocess.Popen(Command,shell=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,encoding="utf-8")
-      if Timeout!=None:
-        try:
-          Output=Proc.communicate(timeout=Timeout)[0]
-        except subprocess.TimeoutExpired:
-          Proc.kill()
-          Output=Proc.communicate()[0]
-          return -2,Output
-      else:
+    Proc=subprocess.Popen(Command,shell=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,encoding="utf-8")
+    if Timeout!=None:
+      try:
+        Output=Proc.communicate(timeout=Timeout)[0]
+      except subprocess.TimeoutExpired:
+        Proc.kill()
         Output=Proc.communicate()[0]
-      ReturnCode=Proc.returncode
-      return ReturnCode,Output
-    elif Detached==True:
-      Proc=subprocess.Popen(Command,shell=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,stdin=subprocess.DEVNULL,start_new_session=True)
-      return 0,str(Proc.pid)
+        return False,-1,Output
     else:
-      ReturnCode=subprocess.call(Command,shell=True,encoding="utf-8")
-      return ReturnCode,None
-  except KeyboardInterrupt:
-    Output=("Command execution interrupted by user" if Redirect else None)
-    return -1,Output
+      Output=Proc.communicate()[0]
+    ReturnCode=Proc.returncode
+    return True,ReturnCode,Output
   except Exception as Ex:
     Output=f"Command execution exception: {Ex}"
-    return -1,Output
+    return False,-1,Output
 
 # -------------------------------------------------------------------------
 # Load python module from a given file path
@@ -173,7 +194,7 @@ def SelectOption(InputOptions,MaxLines,HighlightColor,BackgroundColor=None,Print
     else:
       OptionText=" "+OptionText[1:]
     OptionText=OptionText.ljust(Width)
-    return ansi.SetRgb(Opt["color"])+Color+OptionText+ansi.ResetColor()
+    return ansi.SetFgColor(Opt["color"])+Color+OptionText+ansi.ResetColor()
   
   #Print options for current offset
   def PrintOptions(Options,FirstOptionRow,OptionOffset,VisibleLines,OptionsPerLine,OptionWidth,TerminalCols,BackColor):
@@ -201,7 +222,7 @@ def SelectOption(InputOptions,MaxLines,HighlightColor,BackgroundColor=None,Print
     StatusTextAdjusted=StatusTextAdjusted[:TerminalCols-len(SelectedOptionText)-2]+"\u2026" if len(StatusTextAdjusted)>TerminalCols-len(SelectedOptionText)-2 else StatusTextAdjusted
     StatusLine=f"{StatusTextAdjusted+" "*(TerminalCols-len(StatusTextAdjusted)-len(SelectedOptionText))+SelectedOptionText}"
     terminal.SetCursorPos(StatusRow,1)
-    terminal.Write(ansi.SetRgb(StatusForeColor)+ansi.SetRgb(StatusBackColor,"background")+StatusLine.ljust(TerminalCols)+ansi.ResetColor())
+    terminal.Write(ansi.SetFgColor(StatusForeColor)+ansi.SetBkColor(StatusBackColor)+StatusLine.ljust(TerminalCols)+ansi.ResetColor())
 
   #If no options, return None
   if not InputOptions:
@@ -215,9 +236,9 @@ def SelectOption(InputOptions,MaxLines,HighlightColor,BackgroundColor=None,Print
     terminal.SetForceLineBreak(False)
     
     #Set HighlightColor and BackgroundColor ANSI strings
-    HighColor=ansi.SetRgb(HighlightColor,"background")
+    HighColor=ansi.SetBkColor(HighlightColor)
     if BackgroundColor!=None:
-      BackColor=ansi.SetRgb(BackgroundColor,"background")
+      BackColor=ansi.SetBkColor(BackgroundColor)
     else:
       BackColor=""
     

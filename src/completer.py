@@ -140,8 +140,11 @@ class TabCompleter:
     OptionBoxHeight=int(CompleterMaximunHeightPercent*terminal.GetTerminalSize()[0]/100)
     OptionBoxHeight=(terminal.GetTerminalSize()[0]-2 if OptionBoxHeight>terminal.GetTerminalSize()[0]-2 else OptionBoxHeight)
     
+    #Replace home directory in command buffer
+    Cmd=utils.FilePathDisp2Intr(CommandBuffer,self.Config)
+    
     #Get the search string by substituting the token at offset with token tag
-    SearchString,SearchToken,Added=self._GetSearchString(CommandBuffer,Offset)
+    SearchString,SearchToken,Added=self._GetSearchString(Cmd,Offset)
     if SearchString==None:
       return None
     debug.Get().Send(f"Search string for completion: {SearchString!r} Search token: {SearchToken!r} Added: {Added!r}")
@@ -192,7 +195,10 @@ class TabCompleter:
     #Complete the command buffer with the selected option
     SelectedOption=("\""+SelectedOption+"\"" if " " in SelectedOption else SelectedOption)
     Completed=SearchString.replace(TOKEN_TAG,SelectedOption,1)
-    
+
+    #Replace home directory
+    Completed=utils.FilePathIntr2Disp(Completed,self.Config)
+
     #Return completed command
     return Completed
 
