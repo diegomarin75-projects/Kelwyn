@@ -1,6 +1,7 @@
 --- Kelwyn lang project notes file ---
 
 # Open tasks:
+2026-06-22_063012 : When calling background processes calling kelwyn itself we must pass a parameter to avoid truncation of history and debug log
 2026-06-11_210934 : Implement multiple command execution ;
 2026-06-11_211056 : Implement ps and kill commands
 2026-06-11_211101 : Implement redirection and pipe operators

@@ -27,10 +27,11 @@ class Shell:
   # - WhippetsFolder (string): Path to the folder containing whippet modules
   # - HistoryFile (string): Path to command history file
   # - MaxHistoryCommands (int): Maximum number of history entries to keep
+  # - NoTruncate (bool): No truncation of history file
   # - Config (dict): JSON Configuration file
   # Returns: None
   # -------------------------------------------------------------------------
-  def __init__(self,Command,SkipInit,InitCommand,InitScript,Version,CommandsFolder,CompletersFolder,WhippetsFolder,HistoryFile,MaxHistoryCommands,Config):
+  def __init__(self,Command,SkipInit,InitCommand,InitScript,Version,CommandsFolder,CompletersFolder,WhippetsFolder,HistoryFile,MaxHistoryCommands,NoTruncate,Config):
     self.Config=Config
     self.Command=Command
     self.SkipInit=SkipInit
@@ -38,7 +39,7 @@ class Shell:
     self.InitScript=InitScript
     self.Version=Version
     self.Prompt=prompt.PromptBuilder(WhippetsFolder,Config)
-    self.History=history.ShellHistory(HistoryFile,MaxHistoryCommands,Config)
+    self.History=history.ShellHistory(HistoryFile,MaxHistoryCommands,NoTruncate,Config)
     self.Dispatcher=dispatcher.CommandDispatcher(CommandsFolder,Config)
     self.Completer=completer.TabCompleter(CompletersFolder,Config)
 
@@ -120,11 +121,14 @@ class Shell:
     #Initial script execution
     if self.InitScript!=None:
       InitFile=self.InitScript
-    else:
+    elif self.SkipInit==False:
       InitFile=["clear","banner","wellcome"]
-    Result=self.Dispatcher.ExecuteScript(InitFile)
-    if Result.Event!=dispatcher.DispatcherResult.OK:
-      terminal.Write(ansi.SetFgColor(ErrorMessageColor)+f"Init error: {Result.Output}"+ansi.ResetColor()+"\n")
+    else:
+      InitFile=None
+    if InitFile!=None:
+      Result=self.Dispatcher.ExecuteScript(InitFile)
+      if Result.Event!=dispatcher.DispatcherResult.OK:
+        terminal.Write(ansi.SetFgColor(ErrorMessageColor)+f"Init error: {Result.Output}"+ansi.ResetColor()+"\n")
     
     #Execution for single command
     if self.Command!=None:

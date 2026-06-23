@@ -8,6 +8,7 @@
 import os
 import re
 import io
+import const
 import shutil
 import debug
 import utils
@@ -322,12 +323,13 @@ class CommandDispatcher:
     else:
       Background=False
 
-    #Find python command for background execution
+    #Find python command and main file for background execution
     if Background==True:
       PythonProgram=shutil.which("python")
       if PythonProgram==None:
         Message=f"Python command is not found (required for launching file redirection in background)"
         return DispatcherResult.DispatcherError(Message)
+      MainFile=str(Path(os.path.abspath(__file__)).parent/(const.APP_NAME.lower()+".py"))
     else:
       PythonProgram=None
 
@@ -375,7 +377,7 @@ class CommandDispatcher:
         Status,RetCode,Output=self.ExecProcess(Cmd,Capture=None,Detached=True)
         if Status==False:
           return DispatcherResult.DispatcherError(Output)
-        terminal.Write(f"Process launched in backgrpund (pid={Output})")
+        terminal.Write(f"Process launched in background (pid={Output})")
         return DispatcherResult.Ok()
     
     #Find most inner built-in function calls and execute
@@ -482,17 +484,17 @@ class CommandDispatcher:
         Status,RetCode,Output=self.ExecProcess(Args,Shell=False,Capture=None,Detached=True)
         if Status==False:
           return DispatcherResult.DispatcherError(Output)
-        terminal.Write(f"Process launched in backgrpund (pid={Output})")
+        terminal.Write(f"Process launched in background (pid={Output})")
         return DispatcherResult.Ok()
 
       #Launch external program in background with file redirection
       elif Background==True and RedirectionOperator!=None:
         BackgroundCmd=f"{Cmd} {RedirectionOperator} \"{RedirectionFilePath}\""
-        BackgroundArgs=[PythonProgram,__file__,"--config",self.Config["config_file_path"],"--skip-init","--command",BackgroundCmd]
+        BackgroundArgs=[PythonProgram,MainFile,"--config",self.Config["config_file_path"],"--skip-init","--command",BackgroundCmd]
         Status,RetCode,Output=self.ExecProcess(BackgroundArgs,Shell=False,Capture=None,Detached=True)
         if Status==False:
           return DispatcherResult.DispatcherError(Output)
-        terminal.Write(f"Process launched in backgrpund (pid={Output})")
+        terminal.Write(f"Process launched in background (pid={Output})")
         return DispatcherResult.Ok()
 
       #Launch external program in foreground with file redirection
@@ -548,21 +550,21 @@ class CommandDispatcher:
       
       #Execute in background without file redirection
       elif Background==True and RedirectionOperator==None:
-        BackgroundArgs=[PythonProgram,__file__,"--config",self.Config["config_file_path"],"--skip-init","--command",Cmd]
+        BackgroundArgs=[PythonProgram,MainFile,"--config",self.Config["config_file_path"],"--skip-init","--command",Cmd]
         Status,RetCode,Output=self.ExecProcess(BackgroundArgs,Shell=False,Capture=None,Detached=True)
         if Status==False:
           return DispatcherResult.DispatcherError(Output)
-        terminal.Write(f"Process launched in backgrpund (pid={Output})")
+        terminal.Write(f"Process launched in background (pid={Output})")
         return DispatcherResult.Ok()
 
       #Execute in background with file redirection
       elif Background==True and RedirectionOperator!=None:
         BackgroundCmd=f"{Cmd} {RedirectionOperator} \"{RedirectionFilePath}\""
-        BackgroundArgs=[PythonProgram,__file__,"--config",self.Config["config_file_path"],"--skip-init","--command",BackgroundCmd]
+        BackgroundArgs=[PythonProgram,MainFile,"--config",self.Config["config_file_path"],"--skip-init","--command",BackgroundCmd]
         Status,RetCode,Output=self.ExecProcess(BackgroundArgs,Shell=False,Capture=None,Detached=True)
-        if RetCode!=0:
+        if Status==False:
           return DispatcherResult.DispatcherError(Output)
-        terminal.Write(f"Process launched in backgrpund (pid={Output})")
+        terminal.Write(f"Process launched in background (pid={Output})")
         return DispatcherResult.Ok()
       
       #Normal execution with file redirection
