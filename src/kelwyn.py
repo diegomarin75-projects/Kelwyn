@@ -21,10 +21,10 @@ def Main():
   MainFilePath=sys.modules["__main__"].__file__
   
   #Get version number
-  Version=utils.GetVersion()
+  Version=utils.GetVersion(MainFilePath)
   
   #Set up argument parser
-  ArgParser=argparse.ArgumentParser(description=f"{const.APP_NAME} - A cross-platform command-line shell interpreter",add_help=True)
+  ArgParser=argparse.ArgumentParser(description=f"{const.APP_NAME} - A cross-platform command-line shell interpreter (v{Version})",add_help=True)
   RunGroup=ArgParser.add_mutually_exclusive_group()
   RunGroup.add_argument("--run",dest="Run",action="store_true",help="Start the shell",default=False)
   RunGroup.add_argument("--command",dest="Command",type=str,metavar="CMD",help="Execute a command and exit",default=None)

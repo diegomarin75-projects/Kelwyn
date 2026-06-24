@@ -22,7 +22,7 @@ def Completer(Token,Config,DirsOnly=False):
   Options=[]
 
   #Get directory and partial name
-  if os.path.dirname(Token)=="":
+  if os.path.dirname(Token) in ["","."]:
     CurrentDir=True
     Dir="."
   else:

@@ -14,12 +14,13 @@ from pathlib import Path
 
 # ----------------------------------------------------------------------------------
 # Reads version from version file
-# Args: None
+# Args:
+# - MainFilePath (string): Path to the main application file
 # Returns: string: Version string
 # ----------------------------------------------------------------------------------
-def GetVersion():
+def GetVersion(MainFilePath):
   try:
-    VersionFilePath=Path(sys.modules["__main__"].__file__).parent.parent / "VERSION"
+    VersionFilePath=Path(MainFilePath).parent.parent / "VERSION"
     with open(VersionFilePath,"r",encoding="utf-8") as VersionFile:
       Version=VersionFile.read().strip()
     return Version
