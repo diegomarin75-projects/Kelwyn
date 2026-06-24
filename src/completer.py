@@ -180,6 +180,28 @@ class TabCompleter:
         Options=Completer(SearchToken["value"],self.Config)
         debug.Get().Send(f"Fallback completer used: Options={Options}")
     
+    #Complete to the common part if there are multiple options and a common part exists
+    if len(Options)>0:
+      CommonPart=Options[0]["value"][0]
+      while True:
+        AllMatch=True
+        for Option in Options:
+          if Option["value"].startswith(CommonPart)==False:
+            AllMatch=False
+            break
+        if AllMatch==True:
+          if len(CommonPart)<len(Options[0]["value"]):
+            CommonPart=Options[0]["value"][:len(CommonPart)+1]
+          else:
+            break
+        else:
+          CommonPart=CommonPart[:-1]
+          break
+      if len(CommonPart)>0 and CommonPart!=SearchToken["value"]:
+        Completed=SearchString.replace(TOKEN_TAG,CommonPart,1)
+        Completed=utils.FilePathIntr2Disp(Completed,self.Config)
+        return Completed
+    
     #Get selected option
     SelectedOption=None
     if len(Options)==1:
