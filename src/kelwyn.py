@@ -17,6 +17,12 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 def Main():
 
+  #Main file path
+  MainFilePath=sys.modules["__main__"].__file__
+  
+  #Get version number
+  Version=utils.GetVersion()
+  
   #Set up argument parser
   ArgParser=argparse.ArgumentParser(description=f"{const.APP_NAME} - A cross-platform command-line shell interpreter",add_help=True)
   RunGroup=ArgParser.add_mutually_exclusive_group()
@@ -41,7 +47,7 @@ def Main():
   elif const.CONFIG_VAR_NAME in os.environ:
     ConfigFile=os.environ[const.CONFIG_VAR_NAME]
   else:
-    ConfigFile=Path(os.path.dirname(os.path.abspath(__file__))).parent / "cfg" / const.CONFIG_FILE
+    ConfigFile=Path(os.path.dirname(os.path.abspath(MainFilePath))).parent / "cfg" / const.CONFIG_FILE
 
   #Load config file
   Status,Message,Config=utils.JsonFileParser(ConfigFile)
@@ -49,6 +55,8 @@ def Main():
     print("Error loading config file: "+Message)
     sys.exit(1)
   Config["config_file_path"]=ConfigFile
+  Config["version"]=Version
+  Config["main_file_path"]=MainFilePath
   
   #Get history file
   if Args.HistoryFile!=None:
@@ -58,7 +66,7 @@ def Main():
   elif const.HISTORY_VAR_NAME in os.environ:
     HistoryFile=os.environ[const.HISTORY_VAR_NAME]  
   else:
-    HistoryFile=Path(os.path.dirname(os.path.abspath(__file__))).parent / const.HISTORY_FILE
+    HistoryFile=Path(os.path.dirname(os.path.abspath(MainFilePath))).parent / const.HISTORY_FILE
   
   #Get debug log file
   if Args.DebugLogFile!=None:
@@ -68,12 +76,12 @@ def Main():
   if const.DEBUG_LOG_VAR_NAME in os.environ:
     DebugLogFile=os.environ[const.DEBUG_LOG_VAR_NAME]
   else:
-    DebugLogFile=Path(os.path.dirname(os.path.abspath(__file__))).parent / const.DEBUG_LOG_FILE
+    DebugLogFile=Path(os.path.dirname(os.path.abspath(MainFilePath))).parent / const.DEBUG_LOG_FILE
   
   #Setup other configuration variables
-  CommandsFolder=os.path.join(os.path.dirname(__file__),"commands")
-  CompletersFolder=os.path.join(os.path.dirname(__file__),"completers")
-  WhippetsFolder=os.path.join(os.path.dirname(__file__),"whippets")
+  CommandsFolder=os.path.join(os.path.dirname(MainFilePath),"commands")
+  CompletersFolder=os.path.join(os.path.dirname(MainFilePath),"completers")
+  WhippetsFolder=os.path.join(os.path.dirname(MainFilePath),"whippets")
   MaxDebugLines=Config.get("max_debug_lines",const.MAX_DEBUG_LINES)
   MaxHistoryCommands=Config.get("max_history_commands",const.MAX_HISTORY_COMMANDS)
 
@@ -84,19 +92,19 @@ def Main():
   debug.Init(DebugLogFile,MaxDebugLines,NoTruncate,Config)
 
   #Signal start in debug log
-  debug.Get().Send(f"{const.APP_NAME} v{const.VERSION} started ({"command mode: "+Args.Command if Args.Command!=None else "run mode"})")
+  debug.Get().Send(f"{const.APP_NAME} v{Version} started ({"command mode: "+Args.Command if Args.Command!=None else "run mode"})")
 
   #Init terminal mode, call shell
   try:
     terminal.SetRawTerminalMode()
-    Sh=shell.Shell(Args.Command,Args.SkipInit,Args.InitCommand,Args.InitScript,const.VERSION,CommandsFolder,\
+    Sh=shell.Shell(Args.Command,Args.SkipInit,Args.InitCommand,Args.InitScript,CommandsFolder,\
                    CompletersFolder,WhippetsFolder,HistoryFile,MaxHistoryCommands,NoTruncate,Config)
     Sh.Run()
   finally:
     terminal.RestoreTerminalMode()
   
   #Signal exit in debug log
-  debug.Get().Send(f"{const.APP_NAME} v{const.VERSION} terminated ({"command mode: "+Args.Command if Args.Command!=None else "run mode"})")
+  debug.Get().Send(f"{const.APP_NAME} v{Version} terminated ({"command mode: "+Args.Command if Args.Command!=None else "run mode"})")
 
 #Entry point
 if __name__=="__main__":

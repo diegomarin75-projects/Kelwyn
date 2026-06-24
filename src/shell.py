@@ -21,7 +21,6 @@ class Shell:
   # - SkipInit (bool): If True, skip loading the init script
   # - InitCommand (string): Command to execute at startup before showing prompt
   # - InitScript (string): Path to init script to execute at startup (not implemented yet)
-  # - Version (string): Shell version string for display in banner
   # - CommandsFolder (string): Path to folder containing command modules
   # - CompletersFolder (string): Path to folder containing completer modules
   # - WhippetsFolder (string): Path to the folder containing whippet modules
@@ -31,13 +30,12 @@ class Shell:
   # - Config (dict): JSON Configuration file
   # Returns: None
   # -------------------------------------------------------------------------
-  def __init__(self,Command,SkipInit,InitCommand,InitScript,Version,CommandsFolder,CompletersFolder,WhippetsFolder,HistoryFile,MaxHistoryCommands,NoTruncate,Config):
+  def __init__(self,Command,SkipInit,InitCommand,InitScript,CommandsFolder,CompletersFolder,WhippetsFolder,HistoryFile,MaxHistoryCommands,NoTruncate,Config):
     self.Config=Config
     self.Command=Command
     self.SkipInit=SkipInit
     self.InitCommand=InitCommand
     self.InitScript=InitScript
-    self.Version=Version
     self.Prompt=prompt.PromptBuilder(WhippetsFolder,Config)
     self.History=history.ShellHistory(HistoryFile,MaxHistoryCommands,NoTruncate,Config)
     self.Dispatcher=dispatcher.CommandDispatcher(CommandsFolder,Config)

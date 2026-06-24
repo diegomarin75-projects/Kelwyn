@@ -11,9 +11,8 @@ import ansi
 # General constants
 # ---------------------------------------------------------------------------------------------------------------------
 
-#Application name and version
+#Application name
 APP_NAME="kelwyn"
-VERSION="0.1.0"
 
 # Application banner
 BANNER_COLOR1="#009000"

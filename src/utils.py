@@ -1,6 +1,7 @@
 #Import libraries
 import os
 import re
+import sys
 import json
 import platform
 import subprocess
@@ -9,6 +10,21 @@ import const
 import ansi
 import terminal
 import debug
+from pathlib import Path
+
+# ----------------------------------------------------------------------------------
+# Reads version from version file
+# Args: None
+# Returns: string: Version string
+# ----------------------------------------------------------------------------------
+def GetVersion():
+  try:
+    VersionFilePath=Path(sys.modules["__main__"].__file__).parent.parent / "VERSION"
+    with open(VersionFilePath,"r",encoding="utf-8") as VersionFile:
+      Version=VersionFile.read().strip()
+    return Version
+  except Exception as Ex:
+    return "x.x.x"
 
 # ----------------------------------------------------------------------------------
 # Load a JSON configuration file that tolerates // comments and multiline strings.

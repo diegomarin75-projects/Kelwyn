@@ -11,7 +11,7 @@ A lightweight, cross-platform shell interpreter written in Python.
 Welcome to kelwyn shell - python-integrated command line interpreter
 Type 'help' for available commands,'exit' to quit.
 
-kelwyn ~/projects > _
+kelwyn ~ > _
 ```
 
 ## Core features

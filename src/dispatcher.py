@@ -8,6 +8,7 @@
 import os
 import re
 import io
+import sys
 import const
 import shutil
 import debug
@@ -329,7 +330,7 @@ class CommandDispatcher:
       if PythonProgram==None:
         Message=f"Python command is not found (required for launching file redirection in background)"
         return DispatcherResult.DispatcherError(Message)
-      MainFile=str(Path(os.path.abspath(__file__)).parent/(const.APP_NAME.lower()+".py"))
+      MainFile=str(Path(os.path.abspath(self.Config["main_file_path"])).parent/(const.APP_NAME.lower()+".py"))
     else:
       PythonProgram=None
 
