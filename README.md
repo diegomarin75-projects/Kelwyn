@@ -11,7 +11,7 @@ A lightweight, cross-platform shell interpreter written in Python.
 Welcome to kelwyn shell - python-integrated command line interpreter
 Type 'help' for available commands,'exit' to quit.
 
-kelwyn ~/projects > _
+kelwyn ~ > _
 ```
 
 ## Core features
@@ -22,13 +22,10 @@ kelwyn ~/projects > _
 - **Modular dynamic prompt**: Custom placeholders called **whippets** (`<cwd>`, `<git>`, `<hour>`, etc.) that automatically resolve in the prompt.
 - **Template-style environment interpolation**: use `{{VARNAME}}` placeholders anywhere in a command before execution.
 - **Inline expression and command evaluation**: use `eval(<python_expression>)` and `exec(<command>)` directly inside commands, with nested inner-first resolution.
-- **Single-command mode**: run one command with `--command` and exit (automation-friendly).
 - **Output redirection and background execution**: redirect stdout/stderr to files and launch commands in background.
 - **System command integration**: run external commands directly, with configurable shell pass-through commands.
-- **Built-in command system with structured help**: command metadata, option parsing, examples, and `help` / `--help` support.
 - **Comprehensive configuration**: External JSON-based configuration (`cfg/kelwyn-cfg.json`) to manage history/log paths, UI behavior, and detailed color schemes.
 - **Advanced UI styling**: Support for HEX color codes and named ANSI colors for directory listings, git status (clean/dirty/conflict), and completion menus.
-- **Windows-friendly path UX**: `~` expansion/conversion in command handling, completion, and prompt cwd rendering.
 - **Extensible architecture**: easily add new commands, completers, and prompt whippets by dropping Python modules into designated folders.
 
 ---

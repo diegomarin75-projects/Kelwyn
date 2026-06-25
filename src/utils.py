@@ -1,6 +1,7 @@
 #Import libraries
 import os
 import re
+import sys
 import json
 import platform
 import subprocess
@@ -9,6 +10,22 @@ import const
 import ansi
 import terminal
 import debug
+from pathlib import Path
+
+# ----------------------------------------------------------------------------------
+# Reads version from version file
+# Args:
+# - MainFilePath (string): Path to the main application file
+# Returns: string: Version string
+# ----------------------------------------------------------------------------------
+def GetVersion(MainFilePath):
+  try:
+    VersionFilePath=Path(MainFilePath).parent.parent / "VERSION"
+    with open(VersionFilePath,"r",encoding="utf-8") as VersionFile:
+      Version=VersionFile.read().strip()
+    return Version
+  except Exception as Ex:
+    return "x.x.x"
 
 # ----------------------------------------------------------------------------------
 # Load a JSON configuration file that tolerates // comments and multiline strings.
@@ -186,6 +203,9 @@ def LoadPythonModule(FilePath):
 # ---------------------------------------------------------------------------
 def SelectOption(InputOptions,MaxLines,HighlightColor,BackgroundColor=None,PrintStatus="auto",StatusText="",StatusForeColor=const.DEFAULT_FOREGROUND_COLOR,StatusBackColor=const.DEFAULT_BACKGROUND_COLOR):
   
+  #PrintOptions(Options,FirstOptionRow,OptionOffset,VisibleLines,OptionsPerLine,OptionWidth,TerminalCols,BackColor)
+  #terminal.Write(GetOption(Options[OptionOffset+PrevSelectedIndex],OptionWidth,BackColor,False))
+
   #Get option text with ANSI color codes, applying highlight mode
   def GetOption(Opt,Width,Color,Highlight):
     OptionText=Opt["text"]
@@ -194,6 +214,8 @@ def SelectOption(InputOptions,MaxLines,HighlightColor,BackgroundColor=None,Print
     else:
       OptionText=" "+OptionText[1:]
     OptionText=OptionText.ljust(Width)
+    if terminal.DisplayLength(OptionText)<Width:
+      OptionText=OptionText+" "*(Width-terminal.DisplayLength(OptionText))
     return ansi.SetFgColor(Opt["color"])+Color+OptionText+ansi.ResetColor()
   
   #Print options for current offset
@@ -209,7 +231,7 @@ def SelectOption(InputOptions,MaxLines,HighlightColor,BackgroundColor=None,Print
           RawLine+=GetOption(Opt,OptionWidth,BackColor,False)
         else:
           RawLine+=" "*OptionWidth
-      RestSpaces=TerminalCols-len(ansi.Strip(RawLine))
+      RestSpaces=TerminalCols-terminal.DisplayLength(RawLine)
       RawLine+=RestSpaces*" "
       RawOptions+=RawLine
     terminal.Write(RawOptions)

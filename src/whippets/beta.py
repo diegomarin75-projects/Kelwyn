@@ -1,4 +1,5 @@
 #Import libraries
+import sys
 import ansi
 import const
 from pathlib import Path
@@ -10,7 +11,7 @@ def Whippet(Config):
   BetaModeColor=Config.get("beta_mode_color",const.DEFAULT_FOREGROUND_COLOR)
   
   #Calculate beta tag
-  if Path(__file__).parent.parent.parent.name.lower()=="beta":
+  if Path(Config["main_file_path"]).parent.parent.name.lower()=="beta":
     Beta=ansi.SetFgColor(BetaModeColor)+" (beta)"+ansi.ResetColor()
   else:
     Beta=""

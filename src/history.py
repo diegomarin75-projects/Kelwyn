@@ -1,5 +1,6 @@
 #Import libraries
 import os
+import terminal
 import fnmatch
 
 # ---------------------------------------------------------------------------
@@ -29,11 +30,20 @@ class ShellHistory:
     self.GhostMatches=[]
     self.GhostSearchString=""
     
-    #Truncate history
-    if HistoryFile!=None and os.path.isfile(HistoryFile) and NoTruncate==False:
+    #Load history
+    if HistoryFile!=None and os.path.isfile(HistoryFile):
       with open(HistoryFile,"r",encoding="utf-8") as File:
         self.Commands=[Line.strip() for Line in File if Line.strip()]
+
+    #Truncate history file to maximun commands
+    if NoTruncate==False and len(self.Commands)>MaxCommands:
+      with open(HistoryFile,"w",encoding="utf-8") as File:
+        for Command in self.Commands[-MaxCommands:]:
+          File.write(Command+"\n")
       self.Commands=self.Commands[-MaxCommands:]
+    
+    #Filter non printable characters from commands
+    self.Commands=[terminal.FilterNonPrintable(Cmd) for Cmd in self.Commands]
   
   # -------------------------------------------------------------------------
   # Append a command to the in-memory list and persist it to the history file
