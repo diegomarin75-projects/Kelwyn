@@ -17,6 +17,7 @@
 # Import libraries
 # ---------------------------------------------------------------------------------------------------------------------
 import os
+import re
 import sys
 import ansi
 import shutil
@@ -864,7 +865,7 @@ def Write(Str,Restore=False,Debug=True):
   #move to next line to avoid overwriting the last character on next write.
   WroteExtraLine=False
   if _ForceLineBreak==True and CurPos[0]==NewPos[0] \
-  and NewPos[1]==GetTerminalSize()[1] and NewPos[1]==CurPos[1]+(len(ansi.Strip(Str))-1)%GetTerminalSize()[1]:
+  and NewPos[1]==GetTerminalSize()[1] and NewPos[1]==CurPos[1]+(DisplayLength(Str)-1)%GetTerminalSize()[1]:
     debug.Get().Send("terminal.Write(): Writting extra line, current cursos position: "+str(GetCursorPos()))
     sys.stdout.buffer.write(b"\n")
     sys.stdout.buffer.flush()
@@ -874,14 +875,13 @@ def Write(Str,Restore=False,Debug=True):
 
   #Move cursor backwards same number of characters written if restore cursor position is requested
   RestorePos=None
-  if Restore and len(ansi.Strip(Str))!=0:
-    MoveCursorLinear(-len(ansi.Strip(Str)))
+  if Restore and DisplayLength(Str)!=0:
+    MoveCursorLinear(-DisplayLength(Str))
     RestorePos=GetCursorPos()
 
   #Debug log
   if Debug:
     debug.Get().Send(f"terminal.Write(): (Cur={str(CurPos).replace(" ","")} New={str(NewPos).replace(" ","")} EL={WroteExtraLine} Rest={str(RestorePos).replace(" ","")}) Str={Str!r}")
-    #debug.Get().Send(f"terminal.Write(): (Cur={str(CurPos).replace(" ","")} New={str(NewPos).replace(" ","")} TC={TerminalCols} SW={SizeWritten} EL={WroteExtraLine} LW={LinesWritten},LM={LinesMoved},LS={LinesScrolled} Rest={str(RestorePos).replace(" ","")}) Str={Str!r}")
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Return terminal size as (Rows,Cols) with a fallback of (24,80) if it cannot be determined
@@ -1014,3 +1014,30 @@ def HideCursor():
 # ---------------------------------------------------------------------------------------------------------------------
 def ShowCursor():
   Write(ansi.ShowCursor())
+
+# ----------------------------------------------------------------------------------
+# FIlters ANSI escape sequences used in this application and zero-width characters on a string
+# Args:
+# - Str (string): Input string
+# Returns: 
+# - string: Filtered string
+# ----------------------------------------------------------------------------------
+def FilterNonPrintable(Str):
+  INVISIBLES = {
+    "\u200b",  # zero width space
+    "\ufeff",  # BOM
+  }
+  Text=Str
+  Text="".join(Char for Char in Text if Char not in INVISIBLES)
+  Text=re.sub(r'\x1b\[[0-9;]*[A-Za-z]',"",Text)
+  return Text
+
+# ----------------------------------------------------------------------------------
+# Gets display length of string in terminal
+# Args:
+# - Str (string): Input string
+# Returns: 
+# - int: Visible string length
+# ----------------------------------------------------------------------------------
+def DisplayLength(Str):
+  return len(FilterNonPrintable(Str))

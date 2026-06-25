@@ -217,15 +217,3 @@ def ShowCursor():
 # ---------------------------------------------------------------------------------------------------------------------
 def Escape(Payload):
   return _ESCAPE_PREFIX+Payload
-
-# ---------------------------------------------------------------------------------------------------------------------
-# Strips ANSI escape sequences from a string, returning only the visible text content
-# It removes only the ones used in this module
-# Args:
-# - Text (string): Text containing ANSI escape sequences
-# Returns:
-# - string: Input text with all ANSI escape sequences removed
-# ---------------------------------------------------------------------------------------------------------------------
-def Strip(Text):
-  Regex=r'\x1b\[[0-9;]*[A-Za-z]'
-  return re.sub(Regex,"",Text)

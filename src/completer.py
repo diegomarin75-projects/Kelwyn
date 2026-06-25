@@ -200,6 +200,7 @@ class TabCompleter:
       if len(CommonPart)>0 and CommonPart!=SearchToken["value"]:
         Completed=SearchString.replace(TOKEN_TAG,CommonPart,1)
         Completed=utils.FilePathIntr2Disp(Completed,self.Config)
+        Completed=terminal.FilterNonPrintable(Completed)
         return Completed
     
     #Get selected option
@@ -218,8 +219,9 @@ class TabCompleter:
     SelectedOption=("\""+SelectedOption+"\"" if " " in SelectedOption else SelectedOption)
     Completed=SearchString.replace(TOKEN_TAG,SelectedOption,1)
 
-    #Replace home directory
+    #Replace home directory and filter non printable chars
     Completed=utils.FilePathIntr2Disp(Completed,self.Config)
+    Completed=terminal.FilterNonPrintable(Completed)
 
     #Return completed command
     return Completed

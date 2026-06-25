@@ -203,6 +203,9 @@ def LoadPythonModule(FilePath):
 # ---------------------------------------------------------------------------
 def SelectOption(InputOptions,MaxLines,HighlightColor,BackgroundColor=None,PrintStatus="auto",StatusText="",StatusForeColor=const.DEFAULT_FOREGROUND_COLOR,StatusBackColor=const.DEFAULT_BACKGROUND_COLOR):
   
+  #PrintOptions(Options,FirstOptionRow,OptionOffset,VisibleLines,OptionsPerLine,OptionWidth,TerminalCols,BackColor)
+  #terminal.Write(GetOption(Options[OptionOffset+PrevSelectedIndex],OptionWidth,BackColor,False))
+
   #Get option text with ANSI color codes, applying highlight mode
   def GetOption(Opt,Width,Color,Highlight):
     OptionText=Opt["text"]
@@ -211,6 +214,8 @@ def SelectOption(InputOptions,MaxLines,HighlightColor,BackgroundColor=None,Print
     else:
       OptionText=" "+OptionText[1:]
     OptionText=OptionText.ljust(Width)
+    if terminal.DisplayLength(OptionText)<Width:
+      OptionText=OptionText+" "*(Width-terminal.DisplayLength(OptionText))
     return ansi.SetFgColor(Opt["color"])+Color+OptionText+ansi.ResetColor()
   
   #Print options for current offset
@@ -226,7 +231,7 @@ def SelectOption(InputOptions,MaxLines,HighlightColor,BackgroundColor=None,Print
           RawLine+=GetOption(Opt,OptionWidth,BackColor,False)
         else:
           RawLine+=" "*OptionWidth
-      RestSpaces=TerminalCols-len(ansi.Strip(RawLine))
+      RestSpaces=TerminalCols-terminal.DisplayLength(RawLine)
       RawLine+=RestSpaces*" "
       RawOptions+=RawLine
     terminal.Write(RawOptions)
