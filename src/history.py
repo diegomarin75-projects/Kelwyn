@@ -72,6 +72,7 @@ class ShellHistory:
 
   # -------------------------------------------------------------------------
   # Gets specific ghost suggestion for command buffer
+  # (preserves appearance order in history)
   # Args: 
   # - CommandBuffer (string): Current command buffer to find suggestions for
   # - Index (int): Index of the suggestion to return (0 for most recent match)
@@ -80,7 +81,7 @@ class ShellHistory:
   # -------------------------------------------------------------------------
   def GetGhostSuggestion(self,CommandBuffer,Index):
     if CommandBuffer!=self.GhostSearchString:
-      self.GhostMatches=[Cmd[len(CommandBuffer):] for Cmd in reversed(self.Commands) if Cmd.startswith(CommandBuffer)]
+      self.GhostMatches=list(dict.fromkeys([Cmd[len(CommandBuffer):] for Cmd in reversed(self.Commands) if Cmd.startswith(CommandBuffer)]))
       self.GhostSearchString=CommandBuffer
     if len(self.GhostMatches)==0:
       return None
@@ -88,6 +89,7 @@ class ShellHistory:
   
   # -------------------------------------------------------------------------
   # Gets full list of ghost suggestions that match command buffer
+  # (does not preserves appearance order in history, sorts alphabeticaly)
   # Args: 
   # - CommandBuffer (string): Current command buffer to find suggestions for
   # - SearchMode (string): "prefix" to match commands that start with buffer, "pattern" to match commands by wildcard pattern

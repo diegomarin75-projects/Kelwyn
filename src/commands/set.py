@@ -1,5 +1,6 @@
 #Import libraries
 import os
+import terminal
 import debug
 
 #Command metadatap
@@ -19,9 +20,16 @@ def Get():
 
 #Execute command
 def Execute(Options,Config):
-  try:
-    os.environ[Options.Name] = Options.Value
-  except Exception as Ex:
-    print("Error setting environment variable:",Ex)
-    return False
+  if Options.Name.upper() == "CLIPBOARD":
+    try:
+      terminal.ClipboardSet(Options.Value)
+    except Exception as Ex:
+      print("Error copying into clipboard:",Ex)
+      return False
+  else:
+    try:
+      os.environ[Options.Name.upper()] = Options.Value
+    except Exception as Ex:
+      print("Error setting environment variable:",Ex)
+      return False
   return True

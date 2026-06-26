@@ -104,6 +104,7 @@ class Shell:
     GhostSuggestionColor=self.Config.get("ghost_suggestion_color",const.DEFAULT_BOX_MAX_HEIGHT_PERCENT)
     SelectionForegroundColor=self.Config.get("selection_foreground_color",const.DEFAULT_BACKGROUND_COLOR)
     SelectionBackgroundColor=self.Config.get("selection_background_color",const.DEFAULT_FOREGROUND_COLOR)
+    OptionErrorColor=self.Config.get("option_error_color",const.DEFAULT_FOREGROUND_COLOR)
     SelectionColorSequence=ansi.SetFgColor(SelectionForegroundColor)+ansi.SetBkColor(SelectionBackgroundColor)
 
     #Calculate maximun command box height
@@ -231,7 +232,7 @@ class Shell:
             if len(CommandBuffer)!=0 and CursorOffset==len(CommandBuffer) and len(GhostSuggestion)!=0:
               terminal.Write(" "*(len(GhostSuggestion)), Restore=True)
             Options=[{"text":Cmd,"color":CommandBoxItemForegroundColor} for Cmd in Suggestions]
-            SelectedIndex=utils.SelectOption(Options,CommandBoxHeight,CommandBoxItemHighlightColor,CommandBoxItemBackgroundColor,"auto",f"Command prefix search by: '{CommandBuffer}'",CommandBoxStatusForegroundColor,CommandBoxStatusBackgroundColor)
+            SelectedIndex=utils.SelectOption(Options,CommandBoxHeight,CommandBoxItemHighlightColor,CommandBoxItemBackgroundColor,"auto",f"Command prefix search by: '{CommandBuffer}'",CommandBoxStatusForegroundColor,CommandBoxStatusBackgroundColor,OptionErrorColor)
             if SelectedIndex!=None:
               terminal.MoveCursorLinear(-CursorOffset)
               CommandBuffer=Suggestions[SelectedIndex]
@@ -249,7 +250,7 @@ class Shell:
           if len(CommandBuffer)!=0 and CursorOffset==len(CommandBuffer) and len(GhostSuggestion)!=0:
             terminal.Write(" "*(len(GhostSuggestion)), Restore=True)
           Options=[{"text":Cmd,"color":CommandBoxItemForegroundColor} for Cmd in Suggestions]
-          SelectedIndex=utils.SelectOption(Options,CommandBoxHeight,CommandBoxItemHighlightColor,CommandBoxItemBackgroundColor,"auto",f"Command pattern search by: '{CommandBuffer}'",CommandBoxStatusForegroundColor,CommandBoxStatusBackgroundColor)
+          SelectedIndex=utils.SelectOption(Options,CommandBoxHeight,CommandBoxItemHighlightColor,CommandBoxItemBackgroundColor,"auto",f"Command pattern search by: '{CommandBuffer}'",CommandBoxStatusForegroundColor,CommandBoxStatusBackgroundColor,OptionErrorColor)
           if SelectedIndex!=None:
             terminal.MoveCursorLinear(-CursorOffset)
             CommandBuffer=Suggestions[SelectedIndex]
@@ -402,11 +403,11 @@ class Shell:
       
       #Alt+Up arrow: Previous ghost suggestion
       elif Key.Code()=="ALT+UP":
-        GhostIndex-=1
+        GhostIndex+=1
       
       #Alt+Down arrow: Next ghost suggestion
       elif Key.Code()=="ALT+DOWN":
-        GhostIndex+=1
+        GhostIndex-=1
       
       #Backspace (deletes character before cursor position, or current selection)
       elif Key.Code()=="BACKSPACE":
@@ -466,7 +467,7 @@ class Shell:
           Start=min(SelectionBegin,SelectionEnd)
           End=max(SelectionBegin,SelectionEnd)
           SelectedText=CommandBuffer[Start:End]
-          terminal.ClipboardCopy(SelectedText)
+          terminal.ClipboardSet(SelectedText)
           debug.Get().Send(f"Copied selection to clipboard: {SelectedText!r}")
 
           #Clear selection

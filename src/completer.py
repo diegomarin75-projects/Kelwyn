@@ -135,6 +135,7 @@ class TabCompleter:
     CompleterOptionBackgroundColor=self.Config.get("completer_option_background_color",const.DEFAULT_BACKGROUND_COLOR)
     CompleterStatusForegroundColor=self.Config.get("completer_status_foreground_color",const.DEFAULT_FOREGROUND_COLOR)
     CompleterStatusBackgroundColor=self.Config.get("completer_status_background_color",const.DEFAULT_BACKGROUND_COLOR)
+    OptionErrorColor=self.Config.get("option_error_color",const.DEFAULT_FOREGROUND_COLOR)
     
     #Calculate maximun option box height
     OptionBoxHeight=int(CompleterMaximunHeightPercent*terminal.GetTerminalSize()[0]/100)
@@ -209,7 +210,7 @@ class TabCompleter:
       SelectedOption=Options[0]["value"]
     elif len(Options)>1:
       OptionBoxHeight=int(CompleterMaximunHeightPercent*terminal.GetTerminalSize()[0]/100)
-      SelectedIndex=utils.SelectOption(Options,OptionBoxHeight,CompleterOptionHighlightColor,CompleterOptionBackgroundColor,"auto","",CompleterStatusForegroundColor,CompleterStatusBackgroundColor)
+      SelectedIndex=utils.SelectOption(Options,OptionBoxHeight,CompleterOptionHighlightColor,CompleterOptionBackgroundColor,"auto","",CompleterStatusForegroundColor,CompleterStatusBackgroundColor,OptionErrorColor)
       if SelectedIndex!=None:
         SelectedOption=Options[SelectedIndex]["value"]
     if SelectedOption==None:
