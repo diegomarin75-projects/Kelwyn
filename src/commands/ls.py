@@ -36,6 +36,7 @@ def Execute(Options,Config):
   #Get options from configuration
   LsDirColor=Config.get("global_dir_color",const.DEFAULT_FOREGROUND_COLOR)
   LsFileColor=Config.get("global_file_color",const.DEFAULT_FOREGROUND_COLOR)
+  LsErrorColor=Config.get("global_file_error_color",const.DEFAULT_FOREGROUND_COLOR)
   LsHeaderColor=Config.get("global_dir_header_color",const.DEFAULT_FOREGROUND_COLOR)
   
   #Get file patern as path and the pattern part
@@ -103,7 +104,17 @@ def Execute(Options,Config):
       FilesPerLine=max(1,TerminalCols//MaxLength)
       FileWidth=TerminalCols//FilesPerLine
       DisplayList=[File.ljust(FileWidth) for File in FileList]
-      DisplayList=[ansi.SetFgColor(LsDirColor)+File+ansi.ResetColor() if File.strip().endswith(os.sep) else ansi.SetFgColor(LsFileColor)+File+ansi.ResetColor() for File in DisplayList]
+      DisplayList=[]
+      for File in FileList:
+        File=File.ljust(FileWidth)
+        if terminal.DisplayLength(File)<FileWidth:
+          File=File+" "*(FileWidth-terminal.DisplayLength(File))
+          File=ansi.SetFgColor(LsErrorColor)+File+ansi.ResetColor()
+        elif File.strip().endswith(os.sep):
+          File=ansi.SetFgColor(LsDirColor)+File+ansi.ResetColor()
+        else:
+          File=ansi.SetFgColor(LsFileColor)+File+ansi.ResetColor()
+        DisplayList.append(File)
 
       #Get file metadata when listing vertically
       if Options.ListVertical:

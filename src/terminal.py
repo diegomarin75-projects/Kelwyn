@@ -974,7 +974,7 @@ def Scroll(Lines):
 # - Text (string): Text to copy to the clipboard
 # Returns: None
 # ---------------------------------------------------------------------------------------------------------------------
-def ClipboardCopy(Text):
+def ClipboardSet(Text):
   if IS_WINDOWS:
     Command="clip"
   elif IS_LINUX:
@@ -982,6 +982,22 @@ def ClipboardCopy(Text):
   elif IS_MACOS:
     Command="pbcopy"
   subprocess.run(Command.split(" "),input=Text.encode(),check=True)
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Get clipboard contents as a string using platform-specific methods
+# Args:
+# - Text (string): Text to copy to the clipboard
+# Returns: None
+# ---------------------------------------------------------------------------------------------------------------------
+def ClipboardGet():
+  if IS_WINDOWS:
+    Command="powershell Get-Clipboard"
+  elif IS_LINUX:
+    Command="xclip -selection clipboard -o"
+  elif IS_MACOS:
+    Command="pbpaste"
+  Result=subprocess.run(Command.split(" "),capture_output=True,check=True, encoding="utf-8")
+  return Result.stdout
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Enter alternative screen buffer,if supported by the terminal.

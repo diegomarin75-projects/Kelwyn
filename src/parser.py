@@ -26,7 +26,9 @@ SYMBOL_TOKENS=[
   {"name":"redirect_err_new","value":"2>" },
   {"name":"redirect_err_apd","value":"2>>"},
   {"name":"redirect_all_new","value":"&>" },
-  {"name":"redirect_all_apd","value":"&>>"}
+  {"name":"redirect_all_apd","value":"&>>"},
+  {"name":"command_pipe"    ,"value":"|"  },
+  {"name":"command_end"     ,"value":";"  },
 ]
 
 #Parser errors

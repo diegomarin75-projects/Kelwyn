@@ -35,13 +35,15 @@
   "command_box_status_background_color":"#A00000",
   "global_dir_color"                   :"#40B0FF",
   "global_file_color"                  :"#7F7F7F",
+  "global_file_error_color"            :"#FF0000",
   "global_dir_header_color"            :"#FF7F7F",
   "git_clean_color"                    :"#FF5555",
   "git_dirty_color"                    :"#FF50FF",
   "git_conflict_color"                 :"#FFFF00",
   "git_branch_color"                   :"#909090",
   "stable_mode_color"                  :"#007F00",
-  "beta_mode_color"                    :"#00FFFF" 
+  "beta_mode_color"                    :"#00FFFF",
+  "option_error_color"                 :"#FF0000"
  
   //Alternative using ANSI color names:
   //"error_message_color"                :"bright_red",
@@ -59,12 +61,14 @@
   //"command_box_status_background_color":"bright_red",
   //"global_dir_color"                   :"bright_cyan",
   //"global_file_color"                  :"dark_white",
+  //"global_file_error_color"            :"bright_red",
   //"global_dir_header_color"            :"bright_red",
   //"git_clean_color"                    :"bright_red",
   //"git_dirty_color"                    :"bright_magenta",
   //"git_conflict_color"                 :"bright_yellow",
   //"git_branch_color"                   :"bright_black",
   //"stable_mode_color"                  :"dark_green",
-  //"beta_mode_color"                    :"bright_cyan"   
+  //"beta_mode_color"                    :"bright_cyan",
+  //"option_error_color"                 :"bright_red"
 
 }

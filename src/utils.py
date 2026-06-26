@@ -198,25 +198,28 @@ def LoadPythonModule(FilePath):
 # - StatusText (string): Text to display in the status row
 # - StatusForeColor (string): Foreground color for status row text in #RRGGBB format
 # - StatusBackColor (string): Background color for status row in #RRGGBB format
+# - OptionErrorColor (string): Option error color (contains non-printable characters)
 # Returns:
 # - int: Index of the selected option in the Options list, or None if no selection was made (e.g. user pressed Esc)
 # ---------------------------------------------------------------------------
-def SelectOption(InputOptions,MaxLines,HighlightColor,BackgroundColor=None,PrintStatus="auto",StatusText="",StatusForeColor=const.DEFAULT_FOREGROUND_COLOR,StatusBackColor=const.DEFAULT_BACKGROUND_COLOR):
+def SelectOption(InputOptions,MaxLines,HighlightColor,BackgroundColor=None,PrintStatus="auto",StatusText="",
+                 StatusForeColor=const.DEFAULT_FOREGROUND_COLOR,
+                 StatusBackColor=const.DEFAULT_BACKGROUND_COLOR,
+                 OptionErrorColor=const.DEFAULT_OPT_ERROR_COLOR):
   
-  #PrintOptions(Options,FirstOptionRow,OptionOffset,VisibleLines,OptionsPerLine,OptionWidth,TerminalCols,BackColor)
-  #terminal.Write(GetOption(Options[OptionOffset+PrevSelectedIndex],OptionWidth,BackColor,False))
-
   #Get option text with ANSI color codes, applying highlight mode
-  def GetOption(Opt,Width,Color,Highlight):
+  def GetOption(Opt,Width,BackgroundColor,Highlight):
     OptionText=Opt["text"]
     if Highlight==True:
       OptionText=">"+OptionText[1:]
     else:
       OptionText=" "+OptionText[1:]
     OptionText=OptionText.ljust(Width)
+    ForegroundColor=ansi.SetFgColor(Opt["color"])
     if terminal.DisplayLength(OptionText)<Width:
       OptionText=OptionText+" "*(Width-terminal.DisplayLength(OptionText))
-    return ansi.SetFgColor(Opt["color"])+Color+OptionText+ansi.ResetColor()
+      ForegroundColor=ansi.SetFgColor(OptionErrorColor)
+    return ForegroundColor+BackgroundColor+OptionText+ansi.ResetColor()
   
   #Print options for current offset
   def PrintOptions(Options,FirstOptionRow,OptionOffset,VisibleLines,OptionsPerLine,OptionWidth,TerminalCols,BackColor):

@@ -352,6 +352,16 @@ class CommandDispatcher:
       else:
         Index=EndPos+2
     
+    #Replace special placeholders {{SAFECLIPBOARD}} and {{CLIPBOARD}} with clipboard contents
+    if "{{SAFECLIPBOARD}}" in Cmd or "{{CLIPBOARD}}" in Cmd:
+      try:
+        ClipboardContents=terminal.ClipboardGet()
+        Cmd=Cmd.replace("{{CLIPBOARD}}",ClipboardContents.replace("\n","\\n").replace("\"","\\\""))
+        Cmd=Cmd.replace("{{SAFECLIPBOARD}}",ClipboardContents.replace("\n","").replace("\"","").replace("'",""))
+      except Exception as Ex:
+        Message=f"Error getting clipboard contents: {Ex}"
+        return DispatcherResult.DispatcherError(Message)
+    
     #Replace home directory
     Cmd=utils.FilePathDisp2Intr(Cmd,self.Config)
 
