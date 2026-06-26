@@ -19,6 +19,7 @@ kelwyn ~ > _
 - **Smart interactive editing**: rich line editing with selection, clipboard copy, word-wise navigation, and fast in-line command correction.
 - **Ghost suggestions from history**: live suggestions while typing, plus quick cycling and selection menus when typing commands.
 - **Context-aware completion**: tab completion for paths, directories, and git branch/ref completion for common git commands.
+- **Clipboard management**: clipboard can be read and write as an environment variable, can do copy and paste with commands.
 - **Modular dynamic prompt**: Custom placeholders called **whippets** (`<cwd>`, `<git>`, `<hour>`, etc.) that automatically resolve in the prompt.
 - **Template-style environment interpolation**: use `{{VARNAME}}` placeholders anywhere in a command before execution.
 - **Inline expression and command evaluation**: use `eval(<python_expression>)` and `exec(<command>)` directly inside commands, with nested inner-first resolution.
@@ -104,6 +105,7 @@ Kelwyn uses an external JSON configuration file at `cfg/kelwyn-cfg.json`. This f
   - Selection colors (foreground/background).
   - Completion and Command Box styling.
   - Directory listing colors (`global_dir_color`, `global_file_color`).
+  - Highlight colors for problematic file entries (`global_file_error_color`) and completion/list option entries (`option_error_color`).
   - Git status colors (`git_clean_color`, `git_dirty_color`, `git_conflict_color`).
   - Stable mode color (`stable_mode_color`).
   - Beta mode indicator (`beta_mode_color`).
@@ -159,6 +161,9 @@ python long_task.py &
 - Syntax: `{{VARNAME}}`
 - Expansion occurs before parsing and dispatch.
 - Missing variables are left unchanged.
+- Special clipboard placeholders are also available:
+  - `{{CLIPBOARD}}`: inject clipboard text (newlines and quotes escaped for safe tokenization)
+  - `{{SAFECLIPBOARD}}`: inject sanitized clipboard text (removes newlines and quotes)
 
 Examples:
 
@@ -167,6 +172,13 @@ print {{USER}}
 cd {{HOME}}
 set ROOT C:/repos
 print {{ROOT}}
+```
+
+Clipboard examples:
+
+```text
+print {{CLIPBOARD}}
+set NOTE {{SAFECLIPBOARD}}
 ```
 
 ---
@@ -250,6 +262,7 @@ Example prompt template:
 ### Ghost suggestions
 
 - At end of line, Kelwyn suggests suffix from recent history
+- Duplicate ghost suggestions are collapsed to avoid repeated entries while cycling
 - `Right`: accept suggestion
 - `Alt+Up`: previous suggestion
 - `Alt+Down`: next suggestion
@@ -262,6 +275,7 @@ Example prompt template:
   - file paths (fallback)
   - `cd` path argument (directories only)
   - many git commands (branch/ref completion)
+- If multiple options share a longer common prefix, TAB first expands to that prefix.
 - Multiple matches open an interactive option selector
 - Values containing spaces are auto-quoted
 
@@ -351,6 +365,7 @@ Options:
 Notes:
 
 - Wildcards are only supported in the last path segment.
+- Entries containing non-printable characters are highlighted using `global_file_error_color`.
 
 ### print - Print text to console
 
@@ -380,6 +395,17 @@ Options:
 
 - `<name>` (required positional): variable name
 - `<value>` (required positional): variable value
+
+Notes:
+
+- Variable names are normalized to uppercase.
+- `set CLIPBOARD <value>` copies `<value>` to the system clipboard.
+
+---
+
+## Path display note (`~`)
+
+- Kelwyn uses `~` as the home-directory shorthand in display paths and prompt rendering (for example through `<cwd>`), and expands it back to an internal absolute home path during command processing.
 
 ### wellcome - Display welcome lines
 

@@ -1,6 +1,8 @@
 --- Kelwyn lang project notes file ---
 
 # Open tasks:
+2026-06-26_061247 : Command suggestion aware of current directory
+2026-06-26_061327 : Whippet to show in realtime number of background processes running (auto-updated)
 2026-06-11_210934 : Implement multiple command execution ;
 2026-06-11_211056 : Implement ps and kill commands
 2026-06-11_211101 : Implement redirection and pipe operators
