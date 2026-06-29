@@ -4,8 +4,14 @@
   "history_file": ".kelwyn_history",
   "debug_log_file": ".kelwyn_debug.log",
   
-  //Pass-through commands (executed on host shell by default)
-  "pass_through_commands":["dir","copy","del","mkdir","rmdir"],
+  //Alias definitions
+  "aliases":{
+    "dir":{"enabled":true,"command":"ls -v"},
+    "copy":{"enabled":true,"command":"$copy"},
+    "del":{"enabled":true,"command":"$del"},
+    "rmdir":{"enabled":true,"command":"$rmdir"},
+    "mkdir":{"enabled":true,"command":"$mkdir"}
+  },
   
   //System prompt
   "system_prompt":"{%94m%}[<month>/<day>·<hour><min><sec>]{%0m%}<beta> {%92m%}<cwd>{%0m%}<git> {%90m%}>{%0m%} ",

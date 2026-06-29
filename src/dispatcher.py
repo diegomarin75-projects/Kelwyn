@@ -365,6 +365,17 @@ class CommandDispatcher:
     #Replace home directory
     Cmd=utils.FilePathDisp2Intr(Cmd,self.Config)
 
+    #Replace single command aliases
+    while True:
+      FoundAlias=False
+      for Alias in self.Config["aliases"]:
+        if self.Config["aliases"][Alias]["enabled"]==True and Cmd.startswith(Alias) and self.Config["aliases"][Alias]["command"].find(";")==-1:
+          Cmd=self.Config["aliases"][Alias]["command"]+Cmd[len(Alias):]
+          FoundAlias=True
+          break
+      if FoundAlias==False:
+        break
+
     #Identify tool by first token
     Tool=Cmd.strip().split(" ")[0] if len(Cmd.strip())>0 else ""
 
@@ -372,8 +383,8 @@ class CommandDispatcher:
     if Tool=="exit":
       return DispatcherResult.Terminate()
     
-    #Pass-through command execution to system when it starts by $ or it is pass through list
-    if Cmd.strip().startswith("$") or Tool in self.Config["pass_through_commands"]:
+    #Pass-through command execution to system shell when it starts by $
+    if Cmd.strip().startswith("$"):
       if Cmd.strip().startswith("$"):
         Cmd=Cmd[1:].strip()
       if Background==False:
@@ -628,8 +639,20 @@ class CommandDispatcher:
   # -------------------------------------------------------------------------------------------------------------------
   def ExecuteCommandLine(self,CommandLine):
 
+    #Replace multi command aliases
+    CmdLine=CommandLine.strip()
+    while True:
+      FoundAlias=False
+      for Alias in self.Config["aliases"]:
+        if self.Config["aliases"][Alias]["enabled"]==True and CmdLine.startswith(Alias) and self.Config["aliases"][Alias]["command"].find(";")!=-1:
+          CmdLine=self.Config["aliases"][Alias]["command"]+CmdLine[len(Alias):]
+          FoundAlias=True
+          break
+      if FoundAlias==False:
+        break  
+
     #Split command line into commands by semicolons, ignoring semicolons inside quotes and parentheses
-    Status,Message,Commands=self.Parser.Split(CommandLine)
+    Status,Message,Commands=self.Parser.Split(CmdLine)
     if Status==False:
       Message=f"Command line parse error ({Message.lower()})"
       return DispatcherResult.DispatcherError(Message)
