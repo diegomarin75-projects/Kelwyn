@@ -26,9 +26,7 @@ SYMBOL_TOKENS=[
   {"name":"redirect_err_new","value":"2>" },
   {"name":"redirect_err_apd","value":"2>>"},
   {"name":"redirect_all_new","value":"&>" },
-  {"name":"redirect_all_apd","value":"&>>"},
-  {"name":"command_pipe"    ,"value":"|"  },
-  {"name":"command_end"     ,"value":";"  },
+  {"name":"redirect_all_apd","value":"&>>"}
 ]
 
 #Parser errors
@@ -51,6 +49,126 @@ class CommandParser:
     self.Config=Config
   
   # -------------------------------------------------------------------------------------------------------------------
+  # Split command line into commands by semicolons. 
+  # As this function handles parsing of external commands and to be compatible several kind of shells, this function:
+  # - ignores semicolons inside quoted strings,and double-quoted strings and parentheses
+  # - handles escaped quotes (\' and '') inside quoted strings
+  # - handles escaped double quotes (\" and "") inside double-quoted strings
+  # - returns error on open quoted strings or unmatched parentheses
+  # Args:
+  # - CommandLine (string): Command line to split
+  # Returns:
+  # - bool: True if parsing succeeded,False if failed
+  # - string: Error message in case of error,empty string on success
+  # - list of string: List of commands
+  # -------------------------------------------------------------------------------------------------------------------
+  def Split(self,CommandLine):
+
+    #Initialize variables
+    Cmd=""
+    Commands=[]
+    SingleQuotedStringMode=False
+    DoubleQuotedStringMode=False
+    SingleQuotedStringPos=0
+    DoubleQuotedStringPos=0
+    ParLevel=0
+    ParLevelPos={}
+    Index=0
+
+    #Debug message
+    debug.Get().Send(f"Splitter input: CommandLine={CommandLine}")
+    
+    #Loop through each character in the command line
+    while Index<len(CommandLine):
+  
+      #Get current character
+      Char=CommandLine[Index]
+
+      #Inside single quoted string
+      if SingleQuotedStringMode==True:
+        Cmd+=Char
+        if Char=="'":
+          if Index>0 and CommandLine[Index-1]=="\\":
+            pass
+          elif Index+1<len(CommandLine) and CommandLine[Index+1]=="'":
+            Cmd+=CommandLine[Index+1]
+            Index+=1
+          else:
+            SingleQuotedStringMode=False
+        Index+=1
+
+      #Inside double quoted string
+      elif DoubleQuotedStringMode==True:
+        Cmd+=Char
+        if Char=='"':
+          if Index>0 and CommandLine[Index-1]=="\\":
+            pass
+          elif Index+1<len(CommandLine) and CommandLine[Index+1]=='"':
+            Cmd+=CommandLine[Index+1]
+            Index+=1
+          else:
+            DoubleQuotedStringMode=False
+        Index+=1
+
+      #Start single quote
+      elif Char=="'":
+        SingleQuotedStringPos=Index
+        SingleQuotedStringMode=True
+        Cmd+=Char
+        Index+=1
+
+      #Start double quote
+      elif Char=='"':
+        DoubleQuotedStringPos=Index
+        DoubleQuotedStringMode=True
+        Cmd+=Char
+        Index+=1
+
+      #Open parentheses
+      elif Char=="(":
+        ParLevelPos[ParLevel]=Index
+        ParLevel+=1
+        Cmd+=Char
+        Index+=1
+      
+      #Close parentheses
+      elif Char==")":
+        ParLevel-=1
+        if ParLevel<0:
+          return False,f"Unmatched closing parenthesis at position {Index+1}",[]
+        Cmd+=Char
+        Index+=1
+
+      #Cmd separator
+      elif Char==";" and ParLevel==0:
+        Commands.append(Cmd.strip())
+        Cmd=""
+        Index+=1
+
+      #Rest of the characters
+      else:
+        Cmd+=Char
+        Index+=1
+
+    #Append last command if not empty
+    if Cmd.strip()!="":
+      Commands.append(Cmd.strip())
+    
+    #Check for unclosed quotes or unmatched parentheses before returning
+    if SingleQuotedStringMode==True:
+      return False,f"Unclosed single quoted string at position {SingleQuotedStringPos+1}",[]
+    if DoubleQuotedStringMode==True:
+      return False,f"Unclosed double quoted string at position {DoubleQuotedStringPos+1}",[]
+    if ParLevel!=0:
+      return False,f"Unmatched opening parenthesis at position {ParLevelPos[ParLevel-1]+1}",[]
+
+    #Debug message
+    debug.Get().Send(f"Splitter output: Commands={Commands}")
+
+    #Return success
+    return True,"",Commands
+    
+  # -------------------------------------------------------------------------------------------------------------------
   # Find the matching closing parenthesis in a command string, handling nested parentheses and quoted strings
   # Args:
   # - Command (string): Full command string to search
@@ -58,7 +176,7 @@ class CommandParser:
   # Returns:
   # - int: Index of the matching closing parenthesis, or -1 if not found, or -2 if there is an open quoted string
   # -------------------------------------------------------------------------------------------------------------------
-  def _FindEndingParenthesis(self,Command,AbsStartPos):
+  def FindEndingParenthesis(self,Command,AbsStartPos):
     Index=AbsStartPos
     ParenthesisLevel=0
     QuotedStringMode=False
@@ -135,7 +253,7 @@ class CommandParser:
       #If current position starts with built-in function, find matching ending parenthesis and make recursive call to parse inner command
       elif QuotedStringMode==False and any([Cmd[Index:].startswith(func+"(")==True for func in BUILTIN_FUNCTIONS]):
         FunctionName=Cmd[Index:Cmd.find("(",Index)]
-        EndIndex=self._FindEndingParenthesis(Cmd,Index)
+        EndIndex=self.FindEndingParenthesis(Cmd,Index)
         if EndIndex==-1:
           Message=f"Unmatched parenthesis in command at position {Start+Index}"
           return PARSER_ERROR_UNMATCHED_PARENTHESIS,Message,None
@@ -211,7 +329,7 @@ class CommandParser:
     for FuncName in BUILTIN_FUNCTIONS:
       CallStart=Command.find(FuncName+"(",CallStart+1)
       if CallStart!=-1:
-        CallEnd=self._FindEndingParenthesis(Command,CallStart)
+        CallEnd=self.FindEndingParenthesis(Command,CallStart)
         if CallEnd==-1:
           Message=f"Unmatched parenthesis in command at position {Start+CallStart}"
           return PARSER_ERROR_UNMATCHED_PARENTHESIS,Message,None,None

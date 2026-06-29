@@ -620,6 +620,34 @@ class CommandDispatcher:
     return DispatcherResult.DispatcherError(Message)
 
   # -------------------------------------------------------------------------------------------------------------------
+  # Executes command line, splits command line into commands as previous step
+  # Args:
+  # - CommandLine (string): Full command line
+  # Returns:
+  # - DispatcherResult: Result of the last command executed in the sequence, or the first error encountered
+  # -------------------------------------------------------------------------------------------------------------------
+  def ExecuteCommandLine(self,CommandLine):
+
+    #Split command line into commands by semicolons, ignoring semicolons inside quotes and parentheses
+    Status,Message,Commands=self.Parser.Split(CommandLine)
+    if Status==False:
+      Message=f"Command line parse error ({Message.lower()})"
+      return DispatcherResult.DispatcherError(Message)
+    
+    #Check command line is empty
+    if len(Commands)==0:
+      return DispatcherResult.Ok()
+    
+    #Execute commands
+    for Cmd in Commands:
+      Result=self.ExecuteCommand(Cmd)
+      if Result.Event!=DispatcherResult.OK:
+        break
+    
+    #Return result
+    return Result
+    
+  # -------------------------------------------------------------------------------------------------------------------
   # Executes a sequence of commands on a list of command strings
   # Args:
   # - Commands (list of string): Commands to execute
@@ -645,7 +673,7 @@ class CommandDispatcher:
     for Cmd in Commands:
       if Cmd.strip()=="" or Cmd.strip().startswith("#"):
         continue
-      Result=self.ExecuteCommand(Cmd)
+      Result=self.ExecuteCommandLine(Cmd)
       if Result.Event!=DispatcherResult.OK:
         break
     

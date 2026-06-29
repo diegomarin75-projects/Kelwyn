@@ -496,7 +496,7 @@ class Shell:
         terminal.Write("\n")
         
         #Execute command
-        Result=self.Dispatcher.ExecuteCommand(CommandBuffer)
+        Result=self.Dispatcher.ExecuteCommandLine(CommandBuffer)
         if Result.Event==dispatcher.DispatcherResult.TERMINATE:
           break
         if Result.Event==dispatcher.DispatcherResult.DISPATCHER_ERROR:
