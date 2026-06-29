@@ -55,7 +55,8 @@ class DispatcherResult:
     return DispatcherResult(Event=DispatcherResult.TERMINATE)
   @staticmethod
   def DispatcherError(Output):
-    return DispatcherResult(Event=DispatcherResult.DISPATCHER_ERROR,Output=Output.strip("\n"))
+    OutputLn=(Output.strip("\n") if Output!=None else "Unknown dispatcher error")
+    return DispatcherResult(Event=DispatcherResult.DISPATCHER_ERROR,Output=OutputLn)
   @staticmethod
   def CommandError(Output=None):
     return DispatcherResult(Event=DispatcherResult.COMMAND_ERROR,Output=Output)
@@ -288,7 +289,7 @@ class CommandDispatcher:
         ReturnCode=Proc.returncode
         Status=True
     except KeyboardInterrupt:
-      Output=("Command execution interrupted by user" if Capture!=None else None)
+      Output="Command execution interrupted by user"
       ReturnCode=None
       Status=False
     except Exception as Ex:
