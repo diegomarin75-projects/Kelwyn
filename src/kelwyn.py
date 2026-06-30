@@ -11,19 +11,13 @@ import utils
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
-# Entry point: parse arguments, initialize subsystems, and run the shell
-# Args: None
-# Returns: None
+# Argument parser
+# Args:
+# - Version (string): version number of the application
+# Returns:
+# - args: parsed command line arguments
 # ---------------------------------------------------------------------------
-def Main():
-
-  #Main file path
-  MainFilePath=sys.modules["__main__"].__file__
-  
-  #Get version number
-  Version=utils.GetVersion(MainFilePath)
-  
-  #Set up argument parser
+def GetCommandLineArgs(Version):
   ArgParser=argparse.ArgumentParser(description=f"{const.APP_NAME} - A cross-platform command-line shell interpreter (v{Version})",add_help=True)
   RunGroup=ArgParser.add_mutually_exclusive_group()
   RunGroup.add_argument("--run",dest="Run",action="store_true",help="Start the shell",default=False)
@@ -35,11 +29,18 @@ def Main():
   ArgParser.add_argument("--init-command",dest="InitCommand",type=str,metavar="CMD",help="Command to execute at startup (use with --run)",default=None)
   ArgParser.add_argument("--init-script",dest="InitScript",type=str,metavar="PATH",help="Path to init script to execute at startup (use with --run)",default=None)
   Args=ArgParser.parse_args()
+  return Args
   
-  #If no arguments provided,print help and exit
-  if Args.Run==False and Args.Command==None:
-    ArgParser.print_help()
-    sys.exit(0)
+# ---------------------------------------------------------------------------
+# Start shell interpreter
+# Args:
+# - MainFilePath (string): path to the main python file
+# - Version (string): version number of the application
+# - Args (argparse.Namespace): parsed command line arguments
+# Returns:
+# - bool: Indicates if shell is to be restarted (True) or not (False)
+# ---------------------------------------------------------------------------
+def StartShell(MainFilePath,Version,Args):
 
   #Get config file
   if Args.ConfigFile!=None:
@@ -95,16 +96,47 @@ def Main():
   debug.Get().Send(f"{const.APP_NAME} v{Version} started ({"command mode: "+Args.Command if Args.Command!=None else "run mode"})")
 
   #Init terminal mode, call shell
+  Restart=False
   try:
     terminal.SetRawTerminalMode()
     Sh=shell.Shell(Args.Command,Args.SkipInit,Args.InitCommand,Args.InitScript,CommandsFolder,\
                    CompletersFolder,WhippetsFolder,HistoryFile,MaxHistoryCommands,NoTruncate,Config)
-    Sh.Run()
+    Restart=Sh.Run()
   finally:
     terminal.RestoreTerminalMode()
   
   #Signal exit in debug log
   debug.Get().Send(f"{const.APP_NAME} v{Version} terminated ({"command mode: "+Args.Command if Args.Command!=None else "run mode"})")
+
+  #Exit
+  return Restart
+
+# ---------------------------------------------------------------------------
+# Entry point: parse arguments, initialize subsystems, and run the shell
+# Args: None
+# Returns: None
+# ---------------------------------------------------------------------------
+def Main():
+
+  #Main file path
+  MainFilePath=sys.modules["__main__"].__file__
+  
+  #Get version number
+  Version=utils.GetVersion(MainFilePath)
+  
+  #Get command line arguments
+  Args=GetCommandLineArgs(Version)
+  
+  #If no arguments provided,print help and exit
+  if Args.Run==False and Args.Command==None:
+    ArgParser.print_help()
+    sys.exit(0)
+
+  #Run shell interpreter in a loop to allow for restarts
+  while True:
+    Restart=StartShell(MainFilePath,Version,Args)
+    if Restart==False:
+      break
 
 #Entry point
 if __name__=="__main__":

@@ -36,9 +36,10 @@ class DispatcherResult:
   #Result events
   OK               = 0
   TERMINATE        = 1
-  DISPATCHER_ERROR = 2
-  COMMAND_ERROR    = 3
-  EXTERNAL_ERROR   = 4
+  RESTART          = 2
+  DISPATCHER_ERROR = 3
+  COMMAND_ERROR    = 4
+  EXTERNAL_ERROR   = 5
   
   #Constructor class
   def __init__(self,Event=None,RetCode=None,Output=None):
@@ -53,6 +54,9 @@ class DispatcherResult:
   @staticmethod
   def Terminate():
     return DispatcherResult(Event=DispatcherResult.TERMINATE)
+  @staticmethod
+  def Restart():
+    return DispatcherResult(Event=DispatcherResult.RESTART)
   @staticmethod
   def DispatcherError(Output):
     OutputLn=(Output.strip("\n") if Output!=None else "Unknown dispatcher error")
@@ -186,6 +190,8 @@ class CommandDispatcher:
     for Cmd in self.CommandDir.keys():
       Description=self.CommandDir[Cmd]['get']()['description'].split("\n")[0] if self.CommandDir[Cmd]['get']!=None else "No description available"
       Output+=f"{Cmd.ljust(MaxCmdLength)} : {Description}\n"
+    Output+=f"{"exit".ljust(MaxCmdLength)} : Exit the shell\n"
+    Output+=f"{"init".ljust(MaxCmdLength)} : Restart the shell\n"
     Output+="Use 'help <command>' or '<command> --help' for more information on command usage"
     return Output
   
@@ -199,6 +205,16 @@ class CommandDispatcher:
   # -------------------------------------------------------------------------------------------------------------------
   def PrintHelp(self,Tool):
 
+    #Print help for exit command
+    if Tool=="exit":
+      Output="exit - Exit the shell\n\nUsage:\n  exit"
+      return True,Output
+    
+    #Print help for init command
+    if Tool=="init":
+      Output="init - Restart the shell\n\nUsage:\n  init"
+      return True,Output
+    
     #Check if command exists and has Get() function
     if Tool not in self.CommandDir:
       Output=f"Command '{Tool}' is not implemented"
@@ -381,8 +397,12 @@ class CommandDispatcher:
     Tool=Cmd.strip().split(" ")[0] if len(Cmd.strip())>0 else ""
 
     #Exit command: Terminate shell
-    if Tool=="exit":
+    if Tool=="exit" and len(Cmd.strip().split(" "))==1:
       return DispatcherResult.Terminate()
+    
+    #Restart command: Terminate shell and request restart
+    if Tool=="init" and len(Cmd.strip().split(" "))==1:
+      return DispatcherResult.Restart()
     
     #Pass-through command execution to system shell when it starts by $
     if Cmd.strip().startswith("$"):
@@ -448,7 +468,7 @@ class CommandDispatcher:
         print(Output)
         return DispatcherResult.Ok()
     elif (Tool=="help" and len(Tokens)==2 and Tokens[1]["type"]=="string") \
-     or (len(Tokens)==2 and Tokens[1]["type"]=="string" and Tokens[1]["value"]=="--help" and Tool in self.CommandDir):
+     or (len(Tokens)==2 and Tokens[1]["type"]=="string" and Tokens[1]["value"]=="--help" and (Tool in self.CommandDir or Tool in ["exit","init"])):
       if Tool=="help":
         HelpCommand=Tokens[1]["value"]
       else:
