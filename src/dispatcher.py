@@ -55,7 +55,8 @@ class DispatcherResult:
     return DispatcherResult(Event=DispatcherResult.TERMINATE)
   @staticmethod
   def DispatcherError(Output):
-    return DispatcherResult(Event=DispatcherResult.DISPATCHER_ERROR,Output=Output.strip("\n"))
+    OutputLn=(Output.strip("\n") if Output!=None else "Unknown dispatcher error")
+    return DispatcherResult(Event=DispatcherResult.DISPATCHER_ERROR,Output=OutputLn)
   @staticmethod
   def CommandError(Output=None):
     return DispatcherResult(Event=DispatcherResult.COMMAND_ERROR,Output=Output)
@@ -288,7 +289,7 @@ class CommandDispatcher:
         ReturnCode=Proc.returncode
         Status=True
     except KeyboardInterrupt:
-      Output=("Command execution interrupted by user" if Capture!=None else None)
+      Output="Command execution interrupted by user"
       ReturnCode=None
       Status=False
     except Exception as Ex:
@@ -365,6 +366,17 @@ class CommandDispatcher:
     #Replace home directory
     Cmd=utils.FilePathDisp2Intr(Cmd,self.Config)
 
+    #Replace single command aliases
+    while True:
+      FoundAlias=False
+      for Alias in self.Config["aliases"]:
+        if self.Config["aliases"][Alias]["enabled"]==True and Cmd.startswith(Alias) and self.Config["aliases"][Alias]["command"].find(";")==-1:
+          Cmd=self.Config["aliases"][Alias]["command"]+Cmd[len(Alias):]
+          FoundAlias=True
+          break
+      if FoundAlias==False:
+        break
+
     #Identify tool by first token
     Tool=Cmd.strip().split(" ")[0] if len(Cmd.strip())>0 else ""
 
@@ -372,8 +384,8 @@ class CommandDispatcher:
     if Tool=="exit":
       return DispatcherResult.Terminate()
     
-    #Pass-through command execution to system when it starts by $ or it is pass through list
-    if Cmd.strip().startswith("$") or Tool in self.Config["pass_through_commands"]:
+    #Pass-through command execution to system shell when it starts by $
+    if Cmd.strip().startswith("$"):
       if Cmd.strip().startswith("$"):
         Cmd=Cmd[1:].strip()
       if Background==False:
@@ -620,6 +632,46 @@ class CommandDispatcher:
     return DispatcherResult.DispatcherError(Message)
 
   # -------------------------------------------------------------------------------------------------------------------
+  # Executes command line, splits command line into commands as previous step
+  # Args:
+  # - CommandLine (string): Full command line
+  # Returns:
+  # - DispatcherResult: Result of the last command executed in the sequence, or the first error encountered
+  # -------------------------------------------------------------------------------------------------------------------
+  def ExecuteCommandLine(self,CommandLine):
+
+    #Replace multi command aliases
+    CmdLine=CommandLine.strip()
+    while True:
+      FoundAlias=False
+      for Alias in self.Config["aliases"]:
+        if self.Config["aliases"][Alias]["enabled"]==True and CmdLine.startswith(Alias) and self.Config["aliases"][Alias]["command"].find(";")!=-1:
+          CmdLine=self.Config["aliases"][Alias]["command"]+CmdLine[len(Alias):]
+          FoundAlias=True
+          break
+      if FoundAlias==False:
+        break  
+
+    #Split command line into commands by semicolons, ignoring semicolons inside quotes and parentheses
+    Status,Message,Commands=self.Parser.Split(CmdLine)
+    if Status==False:
+      Message=f"Command line parse error ({Message.lower()})"
+      return DispatcherResult.DispatcherError(Message)
+    
+    #Check command line is empty
+    if len(Commands)==0:
+      return DispatcherResult.Ok()
+    
+    #Execute commands
+    for Cmd in Commands:
+      Result=self.ExecuteCommand(Cmd)
+      if Result.Event!=DispatcherResult.OK:
+        break
+    
+    #Return result
+    return Result
+    
+  # -------------------------------------------------------------------------------------------------------------------
   # Executes a sequence of commands on a list of command strings
   # Args:
   # - Commands (list of string): Commands to execute
@@ -645,7 +697,7 @@ class CommandDispatcher:
     for Cmd in Commands:
       if Cmd.strip()=="" or Cmd.strip().startswith("#"):
         continue
-      Result=self.ExecuteCommand(Cmd)
+      Result=self.ExecuteCommandLine(Cmd)
       if Result.Event!=DispatcherResult.OK:
         break
     
