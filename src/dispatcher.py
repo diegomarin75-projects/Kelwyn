@@ -264,6 +264,30 @@ class CommandDispatcher:
     return True,Output
 
   # ---------------------------------------------------------------------------
+  # Replace aliases in command line
+  # Args:
+  # - Cmd (string): Command line to process
+  # - MultiCmd (bool): True to replace multi-command aliases, False to replace single-command aliases
+  # ---------------------------------------------------------------------------
+  def ReplaceAliases(self,Command,MultiCmd):
+    Cmd=Command.strip()
+    while True:
+      FoundAlias=False
+      for Alias in self.Config["aliases"]:
+        if self.Config["aliases"][Alias]["enabled"]==True and Cmd.startswith(Alias) \
+        and ((MultiCmd==True and self.Config["aliases"][Alias]["command"].find(";")!=-1) \
+        or   (MultiCmd==False and self.Config["aliases"][Alias]["command"].find(";")==-1)):
+          if self.Config["aliases"][Alias]["command"].find("<<line>>")!=-1:
+            Cmd=self.Config["aliases"][Alias]["command"].replace("<<line>>",Cmd[len(Alias):].strip())
+          else:
+            Cmd=self.Config["aliases"][Alias]["command"]+Cmd[len(Alias):]
+          FoundAlias=True
+          break
+      if FoundAlias==False:
+        break
+    return Cmd
+
+  # ---------------------------------------------------------------------------
   # Execute a command and return its output and return code
   # Args:
   # - Command (string or list): Command to execute as a string in shell mode or list or string in program mode
@@ -383,15 +407,7 @@ class CommandDispatcher:
     Cmd=utils.FilePathDisp2Intr(Cmd,self.Config)
 
     #Replace single command aliases
-    while True:
-      FoundAlias=False
-      for Alias in self.Config["aliases"]:
-        if self.Config["aliases"][Alias]["enabled"]==True and Cmd.startswith(Alias) and self.Config["aliases"][Alias]["command"].find(";")==-1:
-          Cmd=self.Config["aliases"][Alias]["command"]+Cmd[len(Alias):]
-          FoundAlias=True
-          break
-      if FoundAlias==False:
-        break
+    Cmd=self.ReplaceAliases(Cmd,MultiCmd=False)
 
     #Identify tool by first token
     Tool=Cmd.strip().split(" ")[0] if len(Cmd.strip())>0 else ""
@@ -661,16 +677,7 @@ class CommandDispatcher:
   def ExecuteCommandLine(self,CommandLine):
 
     #Replace multi command aliases
-    CmdLine=CommandLine.strip()
-    while True:
-      FoundAlias=False
-      for Alias in self.Config["aliases"]:
-        if self.Config["aliases"][Alias]["enabled"]==True and CmdLine.startswith(Alias) and self.Config["aliases"][Alias]["command"].find(";")!=-1:
-          CmdLine=self.Config["aliases"][Alias]["command"]+CmdLine[len(Alias):]
-          FoundAlias=True
-          break
-      if FoundAlias==False:
-        break  
+    CmdLine=self.ReplaceAliases(CommandLine,MultiCmd=True)
 
     #Split command line into commands by semicolons, ignoring semicolons inside quotes and parentheses
     Status,Message,Commands=self.Parser.Split(CmdLine)
