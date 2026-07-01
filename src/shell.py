@@ -114,8 +114,8 @@ class Shell:
     #Init command execution
     if self.InitCommand!=None:
       Result=self.Dispatcher.ExecuteCommand(self.InitCommand)
-      if Result.Event==dispatcher.DispatcherResult.TERMINATE:
-        return
+      if Result.Event==dispatcher.DispatcherResult.TERMINATE or Result.Event==dispatcher.DispatcherResult.RESTART:
+        return False
     
     #Initial script execution
     if self.InitScript!=None:
@@ -132,12 +132,13 @@ class Shell:
     #Execution for single command
     if self.Command!=None:
       Result=self.Dispatcher.ExecuteCommand(self.Command)
-      return
+      return False
 
     #Write initial prompt
     terminal.Write(self.Prompt.Get())
 
     #Main shell loop
+    Restart=False
     while True:
 
       #Read key (loops until a non-printable key is encountered, storing printable characters in InputChars)
@@ -499,6 +500,9 @@ class Shell:
         Result=self.Dispatcher.ExecuteCommandLine(CommandBuffer)
         if Result.Event==dispatcher.DispatcherResult.TERMINATE:
           break
+        if Result.Event==dispatcher.DispatcherResult.RESTART:
+          Restart=True
+          break
         if Result.Event==dispatcher.DispatcherResult.DISPATCHER_ERROR:
           terminal.Write(ansi.SetFgColor(ErrorMessageColor)+f"Error: {Result.Output}"+ansi.ResetColor()+"\n")
         
@@ -564,3 +568,6 @@ class Shell:
       PrevCommandBuffer=CommandBuffer
       PrevCursorOffset=CursorOffset
       PrevGhostIndex=GhostIndex
+    
+    #Return restart flag
+    return Restart
