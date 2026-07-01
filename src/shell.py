@@ -511,7 +511,8 @@ class Shell:
           terminal.Write(ansi.SetFgColor(ErrorMessageColor)+f"Error: {Result.Output}"+ansi.ResetColor()+"\n")
         
         #Store command in history
-        self.History.Store(CommandBuffer,CurrentPath)
+        RetCode=True if Result.Event==dispatcher.DispatcherResult.OK else False
+        self.History.Store(CommandBuffer,CurrentPath,RetCode)
         
         #Write extra line if current cursor position is not the beginning of a new line
         if terminal.GetCursorPos()[1]!=1:

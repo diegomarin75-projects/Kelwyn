@@ -2,6 +2,7 @@
 import os
 import terminal
 import fnmatch
+from itertools import chain
 
 # ---------------------------------------------------------------------------
 # Shell history
@@ -11,6 +12,8 @@ class ShellHistory:
   #Path marks in history file
   PATH_MARK_BEG="⟪ "
   PATH_MARK_END=" ⟫ "
+  COMMAND_OK_STATUS="OK"
+  COMMAND_ERROR_STATUS="ER"
 
   # -------------------------------------------------------------------------
   # Constructor
@@ -57,30 +60,37 @@ class ShellHistory:
     self.PathCommands=[]
     for Command in History:
       if Command.startswith(self.PATH_MARK_BEG)==True and Command.find(self.PATH_MARK_END)!=-1:
+        # format is ⟪ path ⟫ ss command
+        # ss is command return code OK or ER 
         Path=Command[2:Command.find(self.PATH_MARK_END)].strip()
-        Command=Command[Command.find(self.PATH_MARK_END)+len(self.PATH_MARK_END):].strip()
+        RetCode=Command[Command.find(self.PATH_MARK_END)+len(self.PATH_MARK_END):Command.find(self.PATH_MARK_END)+len(self.PATH_MARK_END)+2]
+        RetCode=True if RetCode==self.COMMAND_OK_STATUS else False
+        Command=Command[Command.find(self.PATH_MARK_END)+len(self.PATH_MARK_END)+3:].strip()
       else:
         Path=None
+        RetCode=None
         Command=Command.strip()
       self.AllCommands.append(Command)
-      self.PathCommands.append({"path":Path,"cmd":Command})
+      self.PathCommands.append({"path":Path,"rc":RetCode,"cmd":Command})
   
   # -------------------------------------------------------------------------
   # Append a command to the in-memory list and persist it to the history file
   # Args:
   # - Command (string): Command string to store
   # - Path (string): Current working directory path
+  # - RetCode (boolean): Command return code
   # Returns: None
   # -------------------------------------------------------------------------
-  def Store(self,Command,Path):
+  def Store(self,Command,Path,RetCode):
     Command=Command.strip()
     if len(Command)==0 or (Path==self.LastAddedPath and Command==self.LastAddedCommand):
       return
     self.AllCommands.append(Command)
-    self.PathCommands.append({"path":Path,"cmd":Command})
+    self.PathCommands.append({"path":Path,"rc":RetCode,"cmd":Command})
     if self.HistoryFile!=None:
       with open(self.HistoryFile,"a",encoding="utf-8") as File:
-        HistoryCommand=self.PATH_MARK_BEG+Path+self.PATH_MARK_END+Command
+        RetCodeStr=self.COMMAND_OK_STATUS if RetCode==True else self.COMMAND_ERROR_STATUS
+        HistoryCommand=self.PATH_MARK_BEG+Path+self.PATH_MARK_END+RetCodeStr+" "+Command
         File.write(HistoryCommand+"\n")
       self.LastAddedPath=Path
       self.LastAddedCommand=Command
@@ -108,14 +118,12 @@ class ShellHistory:
   def GetGhostSuggestion(self,CmdBuffer,Index):
     if CmdBuffer!=self.GhostSearchString:
       Path=os.getcwd()
-      self.Matches1=list(dict.fromkeys([Cmd["cmd"][len(CmdBuffer):] for Cmd in reversed(self.PathCommands) if Cmd["cmd"].startswith(CmdBuffer) and Cmd["path"]==Path]))
-      self.Matches2=list(dict.fromkeys([Cmd["cmd"][len(CmdBuffer):] for Cmd in reversed(self.PathCommands) if Cmd["cmd"].startswith(CmdBuffer) and Cmd["cmd"] not in self.Matches1]))
-      self.GhostMatches=self.Matches1+self.Matches2
+      self.Matches1=list(dict.fromkeys([Cmd["cmd"][len(CmdBuffer):] for Cmd in reversed(self.PathCommands) if Cmd["cmd"].startswith(CmdBuffer) and Cmd["path"]==Path and Cmd["rc"]==True]))
+      self.Matches2=list(dict.fromkeys([Cmd["cmd"][len(CmdBuffer):] for Cmd in reversed(self.PathCommands) if Cmd["cmd"].startswith(CmdBuffer) and Cmd["path"]==Path]))
+      self.Matches3=list(dict.fromkeys([Cmd["cmd"][len(CmdBuffer):] for Cmd in reversed(self.PathCommands) if Cmd["cmd"].startswith(CmdBuffer) and Cmd["rc"]==True]))
+      self.Matches4=list(dict.fromkeys([Cmd["cmd"][len(CmdBuffer):] for Cmd in reversed(self.PathCommands) if Cmd["cmd"].startswith(CmdBuffer)]))
+      self.GhostMatches=list(dict.fromkeys(chain(self.Matches1,self.Matches2,self.Matches3,self.Matches4)))
       self.GhostSearchString=CmdBuffer
-      #print(f"\nPath: {Path}")
-      #print(f"Ghost matches 1 for '{CmdBuffer}': {self.Matches1[:10]}{'...' if len(self.Matches1)>10 else ''}")
-      #print(f"Ghost matches 2 for '{CmdBuffer}': {self.Matches2[:10]}{'...' if len(self.Matches2)>10 else ''}")
-      #print(f"Ghost matches combined for '{CmdBuffer}': {self.GhostMatches[:10]}{'...' if len(self.GhostMatches)>10 else ''}")
     if len(self.GhostMatches)==0:
       return None
     return self.GhostMatches[Index%len(self.GhostMatches)]
