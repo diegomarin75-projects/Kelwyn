@@ -1,4 +1,5 @@
 #Import libraries
+import os
 import sys
 import ansi
 import const
@@ -495,6 +496,9 @@ class Shell:
         GhostSuggestion=""
         GhostIndex=0
         terminal.Write("\n")
+
+        #Get current path
+        CurrentPath=os.getcwd()
         
         #Execute command
         Result=self.Dispatcher.ExecuteCommandLine(CommandBuffer)
@@ -507,7 +511,7 @@ class Shell:
           terminal.Write(ansi.SetFgColor(ErrorMessageColor)+f"Error: {Result.Output}"+ansi.ResetColor()+"\n")
         
         #Store command in history
-        self.History.Store(CommandBuffer)
+        self.History.Store(CommandBuffer,CurrentPath)
         
         #Write extra line if current cursor position is not the beginning of a new line
         if terminal.GetCursorPos()[1]!=1:
