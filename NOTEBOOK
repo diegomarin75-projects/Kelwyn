@@ -6,7 +6,6 @@
 2026-06-26_061938 : Implement file operations commands
 2026-06-26_061933 : Implement vers command
 2026-06-26_061904 : Implement init command
-2026-06-26_061247 : Command suggestion aware of current directory
 2026-06-26_061327 : Whippet to show in realtime number of background processes running (auto-updated)
 2026-06-11_211056 : Implement ps and kill commands
 2026-06-11_211101 : Implement pipe operators
@@ -16,6 +15,7 @@
 2026-06-06_234811 : Implement line and inline comments
 
 # Completed tasks:
+[DONE] 2026-06-26_061247 : Command suggestion aware of current directory
 [DONE] 2026-06-27_092454 : Combination of external command ; internal command, passes entire command line to external command, second command not executed!!! Review logic in detail as entire cmd is passed in background cases in the sentence by sentence loop[DONE] 2026-06-11_210934 : Implement multiple command execution ; (make parser to return a list of sentences, then execute them in loop inside dispatcher)
 [DONE] 2026-06-06_234409 : Create a gobal configuration file to set: default prompt, colors and default init script
 [DONE] 2026-06-25_071234 : ls must print in red items with non-printable characters
