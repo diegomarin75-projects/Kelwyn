@@ -8,6 +8,7 @@ from pathlib import Path
 import ansi
 import const
 import utils
+import config
 import debug
 import parser
 import terminal
@@ -25,13 +26,9 @@ class TabCompleter:
   # Constructor
   # Args:
   # - CompletersFolder (string): Path to folder containing completer modules
-  # - Config (dict): JSON Configuration file
   # Returns: None
   # -------------------------------------------------------------------------
-  def __init__(self,CompletersFolder,Config):
-    
-    #Get configuration
-    self.Config=Config
+  def __init__(self,CompletersFolder):
     
     #Load available completer modules on completers folder
     self.Selectors={}
@@ -86,7 +83,7 @@ class TabCompleter:
   def _GetSearchString(self,CommandBuffer,Offset):
 
     #Get parser instance
-    Parser=parser.CommandParser(self.Config)
+    Parser=parser.CommandParser()
 
     #Make command line to parse
     Added=""
@@ -128,21 +125,21 @@ class TabCompleter:
   # - strings: Selected completion by user or None
   # -------------------------------------------------------------------------
   def Complete(self,CommandBuffer,Offset):
-    
+
     #Get options from configuration
-    CompleterMaximunHeightPercent=self.Config.get("completer_maximun_height_percent",const.DEFAULT_BOX_MAX_HEIGHT_PERCENT)
-    CompleterOptionHighlightColor=self.Config.get("completer_option_highlight_color",const.DEFAULT_FOREGROUND_COLOR)
-    CompleterOptionBackgroundColor=self.Config.get("completer_option_background_color",const.DEFAULT_BACKGROUND_COLOR)
-    CompleterStatusForegroundColor=self.Config.get("completer_status_foreground_color",const.DEFAULT_FOREGROUND_COLOR)
-    CompleterStatusBackgroundColor=self.Config.get("completer_status_background_color",const.DEFAULT_BACKGROUND_COLOR)
-    OptionErrorColor=self.Config.get("option_error_color",const.DEFAULT_FOREGROUND_COLOR)
+    CompleterMaximunHeightPercent=config.Get().get("completer_maximun_height_percent",const.DEFAULT_BOX_MAX_HEIGHT_PERCENT)
+    CompleterOptionHighlightColor=config.Get().get("completer_option_highlight_color",const.DEFAULT_FOREGROUND_COLOR)
+    CompleterOptionBackgroundColor=config.Get().get("completer_option_background_color",const.DEFAULT_BACKGROUND_COLOR)
+    CompleterStatusForegroundColor=config.Get().get("completer_status_foreground_color",const.DEFAULT_FOREGROUND_COLOR)
+    CompleterStatusBackgroundColor=config.Get().get("completer_status_background_color",const.DEFAULT_BACKGROUND_COLOR)
+    OptionErrorColor=config.Get().get("option_error_color",const.DEFAULT_FOREGROUND_COLOR)
     
     #Calculate maximun option box height
     OptionBoxHeight=int(CompleterMaximunHeightPercent*terminal.GetTerminalSize()[0]/100)
     OptionBoxHeight=(terminal.GetTerminalSize()[0]-2 if OptionBoxHeight>terminal.GetTerminalSize()[0]-2 else OptionBoxHeight)
     
     #Replace home directory in command buffer
-    Cmd=utils.FilePathDisp2Intr(CommandBuffer,self.Config)
+    Cmd=utils.FilePathDisp2Intr(CommandBuffer,config.Get())
     
     #Get the search string by substituting the token at offset with token tag
     SearchString,SearchToken,Added=self._GetSearchString(Cmd,Offset)
@@ -170,7 +167,7 @@ class TabCompleter:
       debug.Get().Send(f"Checking selector: Type={Type} Regex={Regex}, SearchString='{SearchString}', Matched={Match!=None}")
       if Match!=None:
         Matched=True
-        Options=Completer(SearchToken["value"],self.Config)
+        Options=Completer(SearchToken["value"],config.Get())
         debug.Get().Send(f"Tab completer matched: Type={Type}, Options={Options}")
         break
     
@@ -178,7 +175,7 @@ class TabCompleter:
     if Matched==False:
       if FALLBACK_COMPLETER_TYPE in self.Selectors:
         Completer=self.Selectors[FALLBACK_COMPLETER_TYPE]["completer"]
-        Options=Completer(SearchToken["value"],self.Config)
+        Options=Completer(SearchToken["value"],config.Get())
         debug.Get().Send(f"Fallback completer used: Options={Options}")
     
     #Complete to the common part if there are multiple options and a common part exists
@@ -200,7 +197,7 @@ class TabCompleter:
           break
       if len(CommonPart)>0 and CommonPart!=SearchToken["value"]:
         Completed=SearchString.replace(TOKEN_TAG,CommonPart,1)
-        Completed=utils.FilePathIntr2Disp(Completed,self.Config)
+        Completed=utils.FilePathIntr2Disp(Completed,config.Get())
         Completed=terminal.FilterNonPrintable(Completed)
         return Completed
     
@@ -221,7 +218,7 @@ class TabCompleter:
     Completed=SearchString.replace(TOKEN_TAG,SelectedOption,1)
 
     #Replace home directory and filter non printable chars
-    Completed=utils.FilePathIntr2Disp(Completed,self.Config)
+    Completed=utils.FilePathIntr2Disp(Completed,config.Get())
     Completed=terminal.FilterNonPrintable(Completed)
 
     #Return completed command

@@ -21,13 +21,11 @@ class ShellHistory:
   # - HistoryFile (string): Path to the history file, or None to disable persistence
   # - MaxCommands (int): Maximum number of commands to retain in memory
   # - NoTruncate (bool): No truncation of history file
-  # - Config (dict): JSON Configuration file
   # Returns: None
   # -------------------------------------------------------------------------
-  def __init__(self,HistoryFile,MaxCommands,NoTruncate,Config):
+  def __init__(self,HistoryFile,MaxCommands,NoTruncate):
     
-    #Get configuration
-    self.Config=Config
+    #Save history file path and max commands
     self.HistoryFile=HistoryFile
     self.MaxCommands=MaxCommands
     
