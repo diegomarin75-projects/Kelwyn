@@ -7,6 +7,7 @@ import const
 import debug
 import terminal
 import shell
+import config
 import utils
 from pathlib import Path
 
@@ -51,19 +52,19 @@ def StartShell(MainFilePath,Version,Args):
     ConfigFile=Path(os.path.dirname(os.path.abspath(MainFilePath))).parent / "cfg" / const.CONFIG_FILE
 
   #Load config file
-  Status,Message,Config=utils.JsonFileParser(ConfigFile)
+  Status,Message=config.Load(ConfigFile)
   if Status==False:
     print("Error loading config file: "+Message)
     sys.exit(1)
-  Config["config_file_path"]=ConfigFile
-  Config["version"]=Version
-  Config["main_file_path"]=MainFilePath
+  config.Get()["config_file_path"]=ConfigFile
+  config.Get()["version"]=Version
+  config.Get()["main_file_path"]=MainFilePath
   
   #Get history file
   if Args.HistoryFile!=None:
     HistoryFile=Args.HistoryFile
-  elif "history_file" in Config:
-    HistoryFile=Config["history_file"]
+  elif "history_file" in config.Get():
+    HistoryFile=config.Get()["history_file"]
   elif const.HISTORY_VAR_NAME in os.environ:
     HistoryFile=os.environ[const.HISTORY_VAR_NAME]  
   else:
@@ -72,8 +73,8 @@ def StartShell(MainFilePath,Version,Args):
   #Get debug log file
   if Args.DebugLogFile!=None:
     DebugLogFile=Args.DebugLogFile
-  elif "debug_log_file" in Config:
-    DebugLogFile=Config["debug_log_file"]
+  elif "debug_log_file" in config.Get():
+    DebugLogFile=config.Get()["debug_log_file"]
   if const.DEBUG_LOG_VAR_NAME in os.environ:
     DebugLogFile=os.environ[const.DEBUG_LOG_VAR_NAME]
   else:
@@ -83,14 +84,14 @@ def StartShell(MainFilePath,Version,Args):
   CommandsFolder=os.path.join(os.path.dirname(MainFilePath),"commands")
   CompletersFolder=os.path.join(os.path.dirname(MainFilePath),"completers")
   WhippetsFolder=os.path.join(os.path.dirname(MainFilePath),"whippets")
-  MaxDebugLines=Config.get("max_debug_lines",const.MAX_DEBUG_LINES)
-  MaxHistoryCommands=Config.get("max_history_commands",const.MAX_HISTORY_COMMANDS)
+  MaxDebugLines=config.Get().get("max_debug_lines",const.MAX_DEBUG_LINES)
+  MaxHistoryCommands=config.Get().get("max_history_commands",const.MAX_HISTORY_COMMANDS)
 
   #If executed for single command avoid truncation (debug log and history)
   NoTruncate=(True if Args.Command!=None else False)
   
   #Initialize debug log
-  debug.Init(DebugLogFile,MaxDebugLines,NoTruncate,Config)
+  debug.Init(DebugLogFile,MaxLines=MaxDebugLines,NoTruncate=NoTruncate)
 
   #Signal start in debug log
   debug.Get().Send(f"{const.APP_NAME} v{Version} started ({"command mode: "+Args.Command if Args.Command!=None else "run mode"})")
@@ -100,7 +101,7 @@ def StartShell(MainFilePath,Version,Args):
   try:
     terminal.SetRawTerminalMode()
     Sh=shell.Shell(Args.Command,Args.SkipInit,Args.InitCommand,Args.InitScript,CommandsFolder,\
-                   CompletersFolder,WhippetsFolder,HistoryFile,MaxHistoryCommands,NoTruncate,Config)
+             CompletersFolder,WhippetsFolder,HistoryFile,MaxHistoryCommands,NoTruncate)
     Restart=Sh.Run()
   finally:
     terminal.RestoreTerminalMode()

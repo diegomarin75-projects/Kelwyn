@@ -12,12 +12,11 @@ _DebugLog=None
 # - DebugLogFile (string): Path to the debug log file, or None to disable logging
 # - MaxLines (int): Maximum number of lines to keep in the log file
 # - NoTruncate (bool): If True, do not truncate the log file when it exceeds MaxLines
-# - Config (dict): JSON Configuration file
 # Returns: None
 # ---------------------------------------------------------------------------
-def Init(DebugLogFile,MaxLines,NoTruncate,Config):
+def Init(DebugLogFile,MaxLines,NoTruncate):
   global _DebugLog
-  _DebugLog=DebugLog(DebugLogFile,MaxLines,NoTruncate,Config)
+  _DebugLog=DebugLog(DebugLogFile,MaxLines,NoTruncate)
 
 # ---------------------------------------------------------------------------
 # Return the module-level debug log singleton instance
@@ -39,13 +38,11 @@ class DebugLog:
   # - DebugLogFile (string): Path to the debug log file, or None to disable logging
   # - MaxLines (int): Maximum number of lines to keep in the log file before truncating
   # - NoTruncate (bool): If True, do not truncate the log file when it exceeds MaxLines
-  # - Config (dict): JSON Configuration file
   # Returns: None
   # -------------------------------------------------------------------------
-  def __init__(self,DebugLogFile,MaxLines,NoTruncate,Config):
+  def __init__(self,DebugLogFile,MaxLines,NoTruncate):
     
     #Initialize debug log
-    self.Config=Config
     self.DebugLogFile=DebugLogFile
     self.MaxLines=MaxLines
 

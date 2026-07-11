@@ -16,8 +16,8 @@ import random
 class Evaluator:
   
   #Constructor class
-  def __init__(self,Config):
-    self.Config=Config
+  def __init__(self):
+    pass
   
   #Evaluate expression with limited built-ins and math, cmath, random modules
   def Evaluate(self,Expression):

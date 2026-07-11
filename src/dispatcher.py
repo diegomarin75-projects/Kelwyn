@@ -12,6 +12,7 @@ import sys
 import const
 import shutil
 import debug
+import config
 import utils
 import parser
 import evaluator
@@ -86,15 +87,13 @@ class CommandDispatcher:
   # Constructor
   # Args:
   # - CommandsFolder (string): Path to folder containing command modules
-  # - Config (dict): JSON Configuration file
   # Returns: None
   # -------------------------------------------------------------------------------------------------------------------
-  def __init__(self,CommandsFolder,Config):
+  def __init__(self,CommandsFolder):
 
     #Load parser
-    self.Config=Config
-    self.Parser=parser.CommandParser(Config)
-    self.Evaluator=evaluator.Evaluator(Config)
+    self.Parser=parser.CommandParser()
+    self.Evaluator=evaluator.Evaluator()
 
     #Load command modules on commands folder
     self.CommandDir={}
@@ -273,14 +272,14 @@ class CommandDispatcher:
     Cmd=Command.strip()
     while True:
       FoundAlias=False
-      for Alias in self.Config["aliases"]:
-        if self.Config["aliases"][Alias]["enabled"]==True and Cmd.startswith(Alias) \
-        and ((MultiCmd==True and self.Config["aliases"][Alias]["command"].find(";")!=-1) \
-        or   (MultiCmd==False and self.Config["aliases"][Alias]["command"].find(";")==-1)):
-          if self.Config["aliases"][Alias]["command"].find("<<line>>")!=-1:
-            Cmd=self.Config["aliases"][Alias]["command"].replace("<<line>>",Cmd[len(Alias):].strip())
+      for Alias in config.Get()["aliases"]:
+        if config.Get()["aliases"][Alias]["enabled"]==True and Cmd.startswith(Alias) \
+        and ((MultiCmd==True and config.Get()["aliases"][Alias]["command"].find(";")!=-1) \
+        or   (MultiCmd==False and config.Get()["aliases"][Alias]["command"].find(";")==-1)):
+          if config.Get()["aliases"][Alias]["command"].find("<<line>>")!=-1:
+            Cmd=config.Get()["aliases"][Alias]["command"].replace("<<line>>",Cmd[len(Alias):].strip())
           else:
-            Cmd=self.Config["aliases"][Alias]["command"]+Cmd[len(Alias):]
+            Cmd=config.Get()["aliases"][Alias]["command"]+Cmd[len(Alias):]
           FoundAlias=True
           break
       if FoundAlias==False:
@@ -371,7 +370,7 @@ class CommandDispatcher:
       if PythonProgram==None:
         Message=f"Python command is not found (required for launching file redirection in background)"
         return DispatcherResult.DispatcherError(Message)
-      MainFile=str(Path(os.path.abspath(self.Config["main_file_path"])).parent/(const.APP_NAME.lower()+".py"))
+      MainFile=str(Path(os.path.abspath(config.Get()["main_file_path"])).parent/(const.APP_NAME.lower()+".py"))
     else:
       PythonProgram=None
 
@@ -404,7 +403,7 @@ class CommandDispatcher:
         return DispatcherResult.DispatcherError(Message)
     
     #Replace home directory
-    Cmd=utils.FilePathDisp2Intr(Cmd,self.Config)
+    Cmd=utils.FilePathDisp2Intr(Cmd,config.Get())
 
     #Replace single command aliases
     Cmd=self.ReplaceAliases(Cmd,MultiCmd=False)
@@ -549,7 +548,7 @@ class CommandDispatcher:
       #Launch external program in background with file redirection
       elif Background==True and RedirectionOperator!=None:
         BackgroundCmd=f"{Cmd} {RedirectionOperator} \"{RedirectionFilePath}\""
-        BackgroundArgs=[PythonProgram,MainFile,"--config",self.Config["config_file_path"],"--skip-init","--command",BackgroundCmd]
+        BackgroundArgs=[PythonProgram,MainFile,"--config",config.Get()["config_file_path"],"--skip-init","--command",BackgroundCmd]
         Status,RetCode,Output=self.ExecProcess(BackgroundArgs,Shell=False,Capture=None,Detached=True)
         if Status==False:
           return DispatcherResult.DispatcherError(Output)
@@ -601,7 +600,7 @@ class CommandDispatcher:
       if GetOutput==True:
         Buffer=io.StringIO()
         with redirect_stdout(Buffer), redirect_stderr(Buffer):
-          Status=self.CommandDir[Tool]["execute"](CmdOptions,self.Config)
+          Status=self.CommandDir[Tool]["execute"](CmdOptions,config.Get())
           Output=Buffer.getvalue()
         if Status==False:
           return DispatcherResult.CommandError(Output)
@@ -609,7 +608,7 @@ class CommandDispatcher:
       
       #Execute in background without file redirection
       elif Background==True and RedirectionOperator==None:
-        BackgroundArgs=[PythonProgram,MainFile,"--config",self.Config["config_file_path"],"--skip-init","--command",Cmd]
+        BackgroundArgs=[PythonProgram,MainFile,"--config",config.Get()["config_file_path"],"--skip-init","--command",Cmd]
         Status,RetCode,Output=self.ExecProcess(BackgroundArgs,Shell=False,Capture=None,Detached=True)
         if Status==False:
           return DispatcherResult.DispatcherError(Output)
@@ -619,7 +618,7 @@ class CommandDispatcher:
       #Execute in background with file redirection
       elif Background==True and RedirectionOperator!=None:
         BackgroundCmd=f"{Cmd} {RedirectionOperator} \"{RedirectionFilePath}\""
-        BackgroundArgs=[PythonProgram,MainFile,"--config",self.Config["config_file_path"],"--skip-init","--command",BackgroundCmd]
+        BackgroundArgs=[PythonProgram,MainFile,"--config",config.Get()["config_file_path"],"--skip-init","--command",BackgroundCmd]
         Status,RetCode,Output=self.ExecProcess(BackgroundArgs,Shell=False,Capture=None,Detached=True)
         if Status==False:
           return DispatcherResult.DispatcherError(Output)
@@ -631,13 +630,13 @@ class CommandDispatcher:
         Buffer=io.StringIO()
         if RedirectionPipeMode=="1":
           with redirect_stdout(Buffer):
-            Status=self.CommandDir[Tool]["execute"](CmdOptions,self.Config)
+            Status=self.CommandDir[Tool]["execute"](CmdOptions,config.Get())
         elif RedirectionPipeMode=="2":
           with redirect_stderr(Buffer):
-            Status=self.CommandDir[Tool]["execute"](CmdOptions,self.Config)
+            Status=self.CommandDir[Tool]["execute"](CmdOptions,config.Get())
         elif RedirectionPipeMode=="all":
           with redirect_stdout(Buffer), redirect_stderr(Buffer):
-            Status=self.CommandDir[Tool]["execute"](CmdOptions,self.Config)
+            Status=self.CommandDir[Tool]["execute"](CmdOptions,config.Get())
         Output=Buffer.getvalue()
         if Status==False:
           return DispatcherResult.CommandError()
@@ -653,11 +652,11 @@ class CommandDispatcher:
     
       #Normal execution without file redirection
       else:
-        Status=self.CommandDir[Tool]["execute"](CmdOptions,self.Config)
+        Status=self.CommandDir[Tool]["execute"](CmdOptions,config.Get())
         if Status==False:
           return DispatcherResult.CommandError()
         return DispatcherResult.Ok()
-    
+      
     #Command execution exception handler
     except Exception as Ex:
       Message=f"Exception executing command: {Ex}"

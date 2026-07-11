@@ -6,6 +6,7 @@ import subprocess
 import ansi
 import const
 import utils
+import config
 import datetime
 import debug
 from pathlib import Path
@@ -19,18 +20,16 @@ class PromptBuilder:
   # Constructor
   # Args:
   # - WhippetsFolder (string): Folder on which whippet modules are located
-  # - Config (dict): JSON Configuration file
   # Returns: None
   # -------------------------------------------------------------------------
-  def __init__(self,WhippetsFolder,Config):
-    
+  def __init__(self,WhippetsFolder):
+
     #Get configuration
-    self.Config=Config
-    self.PromptString=Config.get("system_prompt",const.DEFAULT_PROMPT)
-    self.GitCleanColor=Config.get("git_clean_color",const.DEFAULT_FOREGROUND_COLOR)
-    self.GitDirtyColor=Config.get("git_dirty_color",const.DEFAULT_FOREGROUND_COLOR)
-    self.GitConflictColor=Config.get("git_conflict_color",const.DEFAULT_FOREGROUND_COLOR)
-    self.BetaModeColor=Config.get("beta_mode_color",const.DEFAULT_FOREGROUND_COLOR)
+    self.PromptString=config.Get().get("system_prompt",const.DEFAULT_PROMPT)
+    self.GitCleanColor=config.Get().get("git_clean_color",const.DEFAULT_FOREGROUND_COLOR)
+    self.GitDirtyColor=config.Get().get("git_dirty_color",const.DEFAULT_FOREGROUND_COLOR)
+    self.GitConflictColor=config.Get().get("git_conflict_color",const.DEFAULT_FOREGROUND_COLOR)
+    self.BetaModeColor=config.Get().get("beta_mode_color",const.DEFAULT_FOREGROUND_COLOR)
 
     #Load whippet modules
     self.Whippets={}
@@ -57,7 +56,6 @@ class PromptBuilder:
   # - string: Fully expanded prompt string ready to display
   # -------------------------------------------------------------------------
   def Get(self):
-    
     #Get prompt string
     Prompt=self.PromptString
 
@@ -65,7 +63,7 @@ class PromptBuilder:
     for Whippet in self.Whippets:
       if Prompt.find("<"+Whippet+">")!=-1:
         try:
-          Value=self.Whippets[Whippet](self.Config)
+          Value=self.Whippets[Whippet](config.Get())
         except Exception as Ex:
           debug.Get().Send(f"Exception rendering whippet {Whippet}: {str(Ex)}")
           Value=Whippet+"!"

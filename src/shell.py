@@ -7,6 +7,7 @@ import terminal
 import prompt
 import history
 import utils
+import config
 import completer
 import dispatcher
 import debug
@@ -28,19 +29,17 @@ class Shell:
   # - HistoryFile (string): Path to command history file
   # - MaxHistoryCommands (int): Maximum number of history entries to keep
   # - NoTruncate (bool): No truncation of history file
-  # - Config (dict): JSON Configuration file
   # Returns: None
   # -------------------------------------------------------------------------
-  def __init__(self,Command,SkipInit,InitCommand,InitScript,CommandsFolder,CompletersFolder,WhippetsFolder,HistoryFile,MaxHistoryCommands,NoTruncate,Config):
-    self.Config=Config
+  def __init__(self,Command,SkipInit,InitCommand,InitScript,CommandsFolder,CompletersFolder,WhippetsFolder,HistoryFile,MaxHistoryCommands,NoTruncate):
     self.Command=Command
     self.SkipInit=SkipInit
     self.InitCommand=InitCommand
     self.InitScript=InitScript
-    self.Prompt=prompt.PromptBuilder(WhippetsFolder,Config)
-    self.History=history.ShellHistory(HistoryFile,MaxHistoryCommands,NoTruncate,Config)
-    self.Dispatcher=dispatcher.CommandDispatcher(CommandsFolder,Config)
-    self.Completer=completer.TabCompleter(CompletersFolder,Config)
+    self.Prompt=prompt.PromptBuilder(WhippetsFolder)
+    self.History=history.ShellHistory(HistoryFile,MaxHistoryCommands,NoTruncate)
+    self.Dispatcher=dispatcher.CommandDispatcher(CommandsFolder)
+    self.Completer=completer.TabCompleter(CompletersFolder)
 
   # -------------------------------------------------------------------------
   # Move by word to the left (Ctrl+Left) or right (Ctrl+Right)
@@ -95,17 +94,17 @@ class Shell:
     NextKey=None
 
     #Get options from configuration
-    CommandBoxMaximunHeightPercent=self.Config.get("command_box_maximun_height_percent",const.DEFAULT_BOX_MAX_HEIGHT_PERCENT)
-    CommandBoxItemForegroundColor=self.Config.get("command_box_item_foreground_color",const.DEFAULT_FOREGROUND_COLOR)
-    CommandBoxItemHighlightColor=self.Config.get("command_box_item_highlight_color",const.DEFAULT_FOREGROUND_COLOR)
-    CommandBoxItemBackgroundColor=self.Config.get("command_box_item_background_color",const.DEFAULT_BACKGROUND_COLOR)
-    CommandBoxStatusForegroundColor=self.Config.get("command_box_status_foreground_color",const.DEFAULT_FOREGROUND_COLOR)
-    CommandBoxStatusBackgroundColor=self.Config.get("command_box_status_background_color",const.DEFAULT_BACKGROUND_COLOR)
-    ErrorMessageColor=self.Config.get("error_message_color",const.DEFAULT_BOX_MAX_HEIGHT_PERCENT)
-    GhostSuggestionColor=self.Config.get("ghost_suggestion_color",const.DEFAULT_BOX_MAX_HEIGHT_PERCENT)
-    SelectionForegroundColor=self.Config.get("selection_foreground_color",const.DEFAULT_BACKGROUND_COLOR)
-    SelectionBackgroundColor=self.Config.get("selection_background_color",const.DEFAULT_FOREGROUND_COLOR)
-    OptionErrorColor=self.Config.get("option_error_color",const.DEFAULT_FOREGROUND_COLOR)
+    CommandBoxMaximunHeightPercent=config.Get().get("command_box_maximun_height_percent",const.DEFAULT_BOX_MAX_HEIGHT_PERCENT)
+    CommandBoxItemForegroundColor=config.Get().get("command_box_item_foreground_color",const.DEFAULT_FOREGROUND_COLOR)
+    CommandBoxItemHighlightColor=config.Get().get("command_box_item_highlight_color",const.DEFAULT_FOREGROUND_COLOR)
+    CommandBoxItemBackgroundColor=config.Get().get("command_box_item_background_color",const.DEFAULT_BACKGROUND_COLOR)
+    CommandBoxStatusForegroundColor=config.Get().get("command_box_status_foreground_color",const.DEFAULT_FOREGROUND_COLOR)
+    CommandBoxStatusBackgroundColor=config.Get().get("command_box_status_background_color",const.DEFAULT_BACKGROUND_COLOR)
+    ErrorMessageColor=config.Get().get("error_message_color",const.DEFAULT_BOX_MAX_HEIGHT_PERCENT)
+    GhostSuggestionColor=config.Get().get("ghost_suggestion_color",const.DEFAULT_BOX_MAX_HEIGHT_PERCENT)
+    SelectionForegroundColor=config.Get().get("selection_foreground_color",const.DEFAULT_BACKGROUND_COLOR)
+    SelectionBackgroundColor=config.Get().get("selection_background_color",const.DEFAULT_FOREGROUND_COLOR)
+    OptionErrorColor=config.Get().get("option_error_color",const.DEFAULT_FOREGROUND_COLOR)
     SelectionColorSequence=ansi.SetFgColor(SelectionForegroundColor)+ansi.SetBkColor(SelectionBackgroundColor)
 
     #Calculate maximun command box height
