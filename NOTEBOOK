@@ -1,6 +1,7 @@
 --- Kelwyn lang project notes file ---
 
 # Open tasks:
+2026-10-30_064108 : Possibility of GetCursorPos() returning None I do not like at all (replace by exception, remove guards!)
 2026-06-27_091029 : Help command does not allow redirection (it must be implemented like rest of commands)
 2026-06-26_061953 : Implement ctrl-z / ctrl-y (keep a list of edits of the comment line along with offset position, ctrl-z will recover previous edit and ctrl-y will recover next edit)
 2026-06-26_061938 : Implement file operations commands
@@ -36,4 +37,48 @@
 [DONE] 2026-06-02_062833 : Must pass current environment variables when executting external processes
 [DONE] 2026-05-26_071902 : Problem in parser, cannot escape quotes with backslash as it is causing conflict with windows dir separator. 
                            Must use repeated quotes to escape them. Implementation is not corect! Review quotes is parsed correctly inside a string
+
+# Environment setup notes
+
+Steps for this repo (from repo root, all commands cross-platform):
+
+1. Install uv
+- Linux: curl -LsSf https://astral.sh/uv/install.sh | sh
+- Windows: powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+- verify: uv --version
+
+2. Pin project metadata (creates pyproject.toml + .python-version, no scaffolding files)
+uv init --bare --python 3.12
+
+3. Create the environment
+uv venv
+(reads version from .python-version; or force with uv venv --python 3.12)
+
+4. Sanity check
+.venv/bin/python src/kelwyn.py --run        # Windows: .venv\Scripts\python.exe src\kelwyn.py --run
+
+5. Create kelwyn.sh launcher
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")"
+[ -d .venv ] || { echo "venv missing: run 'uv venv'" >&2; exit 1; }
+exec .venv/bin/python src/kelwyn.py "$@"
+chmod +x kelwyn.sh
+Windows equivalent kelwyn.bat: @echo off / "%~dp0.venv\Scripts\python.exe" "%~dp0src\kelwyn.py" %*
+
+6. Add dependencies whenever needed: uv add <package> (updates pyproject.toml + uv.lock); stdlib-only now, so nothing yet.
+
+7. Commit pyproject.toml, .python-version, uv.lock (after first uv add), and the launcher scripts. Confirm .venv/ is ignored (it's in your .gitignore already).
+
+8. After cloning elsewhere: uv sync recreates .venv exactly.
+
+From inside the project directory, uv targets the project's .venv automatically:
+uv add requests          # installs into .venv + records in pyproject.toml (recommended)
+uv pip install requests   # installs into .venv without recording (pip-style)
+
+For a different/unnamed environment, point uv at it explicitly:
+uv venv --python 3.12 .venv-312
+uv pip install --python .venv-312/bin/python requests     # Windows: .venv-312\Scripts\python.exe
+
+Rule of thumb: uv add when inside the project (keeps lockfile in sync), uv pip install --python <path> for any venv outside the default one.
 

@@ -514,7 +514,9 @@ class Shell:
         self.History.Store(CommandBuffer,CurrentPath,RetCode)
         
         #Write extra line if current cursor position is not the beginning of a new line
-        if terminal.GetCursorPos()[1]!=1:
+        #(when position is unknown assume it is not at column 1 to keep prompt aligned)
+        Pos=terminal.GetCursorPos()
+        if Pos==None or Pos[1]!=1:
           terminal.Write("\n")
         
         #Reset command buffer and state

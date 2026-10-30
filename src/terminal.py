@@ -19,6 +19,7 @@
 import os
 import re
 import sys
+import time
 import ansi
 import shutil
 import platform
@@ -39,141 +40,171 @@ import debug
 # ---------------------------------------------------------------------------------------------------------------------
 IS_WINDOWS=(platform.system()=="Windows")
 IS_LINUX=(platform.system()=="Linux")
-IS_MACOS=(platform.system()=="Darwin")
 _ForceLineBreak=True
+
+#Keystrokes consumed from stdin while searching for a cursor position report (DSR)
+#response.They are pushed back here so ReadKey/IsKeyboardHit read them in order.
+_PendingInput=b""
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Push back bytes so they are returned by the next input reads
+# Args:
+# - Data (bytes): Bytes to push back
+# Returns: None
+# ---------------------------------------------------------------------------------------------------------------------
+def _FeedPending(Data):
+  global _PendingInput
+  if Data:
+    _PendingInput+=Data
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Take one pushed-back byte
+# Args: None
+# Returns:
+# - bytes: Single byte,or empty bytes if there are no pushed-back bytes
+# ---------------------------------------------------------------------------------------------------------------------
+def _TakePending():
+  global _PendingInput
+  if not _PendingInput:
+    return b""
+  Byte=_PendingInput[:1]
+  _PendingInput=_PendingInput[1:]
+  return Byte
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Constants for windows
 # ---------------------------------------------------------------------------------------------------------------------
+if IS_WINDOWS:
 
-#Win32 Console API constants
-WIN_STD_INPUT  =ctypes.c_ulong(0xFFFFFFF6)  #(DWORD)-10
-WIN_STD_OUTPUT =ctypes.c_ulong(0xFFFFFFF5)  #(DWORD)-11
-WIN_KEY_EVENT  =0x0001
-WIN_KEY_PRESSED=0x8000  #high bit set=key is down
+  #Win32 Console API constants
+  WIN_STD_INPUT  =ctypes.c_ulong(0xFFFFFFF6)  #(DWORD)-10
+  WIN_STD_OUTPUT =ctypes.c_ulong(0xFFFFFFF5)  #(DWORD)-11
+  WIN_KEY_EVENT  =0x0001
+  WIN_KEY_PRESSED=0x8000  #high bit set=key is down
 
-#Generic modifier VK codes (used only to skip those events from ReadKey)
-WIN_VK_SHIFT  =0x10
-WIN_VK_CONTROL=0x11
-WIN_VK_MENU   =0x12
+  #Generic modifier VK codes (used only to skip those events from ReadKey)
+  WIN_VK_SHIFT  =0x10
+  WIN_VK_CONTROL=0x11
+  WIN_VK_MENU   =0x12
 
-#Left/right-specific VK codes for GetKeyState
-WIN_VK_LSHIFT  =0xA0
-WIN_VK_RSHIFT  =0xA1
-WIN_VK_LCONTROL=0xA2
-WIN_VK_RCONTROL=0xA3
-WIN_VK_LMENU   =0xA4   #Left Alt
-WIN_VK_RMENU   =0xA5   #Right Alt / AltGr
+  #Left/right-specific VK codes for GetKeyState
+  WIN_VK_LSHIFT  =0xA0
+  WIN_VK_RSHIFT  =0xA1
+  WIN_VK_LCONTROL=0xA2
+  WIN_VK_RCONTROL=0xA3
+  WIN_VK_LMENU   =0xA4   #Left Alt
+  WIN_VK_RMENU   =0xA5   #Right Alt / AltGr
 
-#Virtual key map for non-character keys and function keys
-WIN_VK_MAP={
-  0x08: "BACKSPACE",
-  0x09: "TAB",
-  0x0D: "RETURN",
-  0x1B: "ESCAPE",
-  0x20: "SPACE",
-  0x21: "PAGE_UP",
-  0x22: "PAGE_DOWN",
-  0x23: "END",
-  0x24: "HOME",
-  0x25: "LEFT",
-  0x26: "UP",
-  0x27: "RIGHT",
-  0x28: "DOWN",
-  0x2D: "INSERT",
-  0x2E: "DELETE",
-  0x2C: "PRINT_SCREEN",
-}
-WIN_VK_MAP.update({0x70 + i: f"F{i + 1}" for i in range(12)})
+  #Virtual key map for non-character keys and function keys
+  WIN_VK_MAP={
+    0x08: "BACKSPACE",
+    0x09: "TAB",
+    0x0D: "RETURN",
+    0x1B: "ESCAPE",
+    0x20: "SPACE",
+    0x21: "PAGE_UP",
+    0x22: "PAGE_DOWN",
+    0x23: "END",
+    0x24: "HOME",
+    0x25: "LEFT",
+    0x26: "UP",
+    0x27: "RIGHT",
+    0x28: "DOWN",
+    0x2D: "INSERT",
+    0x2E: "DELETE",
+    0x2C: "PRINT_SCREEN",
+  }
+  WIN_VK_MAP.update({0x70 + i: f"F{i + 1}" for i in range(12)})
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Constants for Linux/macOS
 # ---------------------------------------------------------------------------------------------------------------------
+if IS_LINUX:
 
-#These bytes are unambiguous named keys (not reported as Ctrl+x combos).
-UNIX_PLAIN={
-  0x08: "BACKSPACE",#^H  (old keyboards / some terminals)
-  0x09: "TAB",     #^I
-  0x0D: "RETURN",  #^M
-  0x1B: "ESCAPE",  #used when _ByteToKey is called with bare ESC
-  0x7F: "BACKSPACE",#DEL  (standard on modern Linux)
-}
+  #These bytes are unambiguous named keys (not reported as Ctrl+x combos).
+  UNIX_PLAIN={
+    0x08: "BACKSPACE",#^H  (old keyboards / some terminals)
+    0x09: "TAB",     #^I
+    0x0D: "RETURN",  #^M
+    0x1B: "ESCAPE",  #used when _ByteToKey is called with bare ESC
+    0x7F: "BACKSPACE",#DEL  (standard on modern Linux)
+  }
 
-#Remaining control bytes → key letter,reported with ctrl=True.
-UNIX_CTRL={
-  0x00: "SPACE",  #Ctrl+Space / Ctrl+@
-  **{
-    n: chr(ord("A") + n-1)
-    for n in range(1,27)
-    if n not in (0x08,0x09,0x0D)  #Tab,Return,Backspace handled above
-  },
-  0x1C: "\\",
-  0x1D: "]",
-  0x1E: "^",
-  0x1F: "_",
-}
+  #Remaining control bytes → key letter,reported with ctrl=True.
+  UNIX_CTRL={
+    0x00: "SPACE",  #Ctrl+Space / Ctrl+@
+    **{
+      n: chr(ord("A") + n-1)
+      for n in range(1,27)
+      if n not in (0x08,0x09,0x0D)  #Tab,Return,Backspace handled above
+    },
+    0x1C: "\\",
+    0x1D: "]",
+    0x1E: "^",
+    0x1F: "_",
+  }
 
-#CSI final-byte sequences: \x1b[<letter>  (or \x1b[1;<mod><letter>)
-UNIX_CSI_LETTER={
-  "A": "UP",
-  "B": "DOWN",
-  "C": "RIGHT",
-  "D": "LEFT",
-  "F": "END",
-  "H": "HOME",
-  "P": "F1",
-  "Q": "F2",
-  "R": "F3",
-  "S": "F4",
-  "Z": "TAB",#Shift+Tab (\x1b[Z) – shift flag forced below
-}
+  #CSI final-byte sequences: \x1b[<letter>  (or \x1b[1;<mod><letter>)
+  UNIX_CSI_LETTER={
+    "A": "UP",
+    "B": "DOWN",
+    "C": "RIGHT",
+    "D": "LEFT",
+    "F": "END",
+    "H": "HOME",
+    "P": "F1",
+    "Q": "F2",
+    "R": "F3",
+    "S": "F4",
+    "Z": "TAB",#Shift+Tab (\x1b[Z) – shift flag forced below
+  }
 
-#CSI tilde sequences: \x1b[<n>~
-UNIX_CSI_TILDE={
-  1:  "HOME",
-  2:  "INSERT",
-  3:  "DELETE",
-  4:  "END",
-  5:  "PAGE_UP",
-  6:  "PAGE_DOWN",
-  15: "F5",
-  17: "F6",
-  18: "F7",
-  19: "F8",
-  20: "F9",
-  21: "F10",
-  23: "F11",
-  24: "F12",
-}
+  #CSI tilde sequences: \x1b[<n>~
+  UNIX_CSI_TILDE={
+    1:  "HOME",
+    2:  "INSERT",
+    3:  "DELETE",
+    4:  "END",
+    5:  "PAGE_UP",
+    6:  "PAGE_DOWN",
+    15: "F5",
+    17: "F6",
+    18: "F7",
+    19: "F8",
+    20: "F9",
+    21: "F10",
+    23: "F11",
+    24: "F12",
+  }
 
-#SS3 sequences: \x1bO<letter>
-UNIX_SS3={
-  "A": "UP",
-  "B": "DOWN",
-  "C": "RIGHT",
-  "D": "LEFT",
-  "F": "END",
-  "H": "HOME",
-  "M": "RETURN",
-  "P": "F1",
-  "Q": "F2",
-  "R": "F3",
-  "S": "F4",
-}
+  #SS3 sequences: \x1bO<letter>
+  UNIX_SS3={
+    "A": "UP",
+    "B": "DOWN",
+    "C": "RIGHT",
+    "D": "LEFT",
+    "F": "END",
+    "H": "HOME",
+    "M": "RETURN",
+    "P": "F1",
+    "Q": "F2",
+    "R": "F3",
+    "S": "F4",
+  }
 
-#Kitty keyboard protocol – special Unicode codepoints
-UNIX_KITTY_SPECIAL={
-  9:     "TAB",
-  13:    "RETURN",
-  27:    "ESCAPE",
-  127:   "BACKSPACE",
-  57358: "CAPS_LOCK",
-  57359: "SCROLL_LOCK",
-  57360: "NUM_LOCK",
-  57361: "PRINT_SCREEN",
-  57362: "PAUSE",
-  57363: "MENU",
-}
+  #Kitty keyboard protocol – special Unicode codepoints
+  UNIX_KITTY_SPECIAL={
+    9:     "TAB",
+    13:    "RETURN",
+    27:    "ESCAPE",
+    127:   "BACKSPACE",
+    57358: "CAPS_LOCK",
+    57359: "SCROLL_LOCK",
+    57360: "NUM_LOCK",
+    57361: "PRINT_SCREEN",
+    57362: "PAUSE",
+    57363: "MENU",
+  }
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Key event data class
@@ -230,9 +261,10 @@ class TerminalInputWindows:
   SavedMode=None
 
   #Class level initialization: configure GetKeyState return type at import time.
-  windll.user32.GetKeyState.restype =c_short
-  windll.user32.GetKeyState.argtypes=[ctypes.c_int]
-  windll.user32.ToUnicodeEx.restype=ctypes.c_int
+  if IS_WINDOWS:
+    windll.user32.GetKeyState.restype =c_short
+    windll.user32.GetKeyState.argtypes=[ctypes.c_int]
+    windll.user32.ToUnicodeEx.restype=ctypes.c_int
 
   # -------------------------------------------------------------------------------------------------------------------
   # New instance will throw exception; this class is not meant to be instantiated.
@@ -485,6 +517,17 @@ class TerminalInputUnix:
   #Saved terminal settings for restoration
   SavedTermios=None
 
+  #Cursor position report (DSR/CPR) reply: ESC [ ? row ; col [; extra] R
+  DSR_REPLY_PATTERN=rb"\x1b\[\??(\d+);(\d+)(?:;\d+)?R"
+  DSR_REPLY_CLEAN_PATTERN=rb"\x1b\[\??\d+;\d+(?:;\d+)?R"
+
+  #Number of cursor position queries sent before giving up and the wait per query (seconds).
+  #Retries cover replies that arrive just after a timeout (the late reply from a previous
+  #query is also accepted on the next attempt).Bounded so a terminal that never answers
+  #cannot hang the shell (worst case: attempts*timeout seconds).
+  DSR_ATTEMPTS=5
+  DSR_TIMEOUT=0.5
+
   # -------------------------------------------------------------------------------------------------------------------
   # New instance will throw exception; this class is not meant to be instantiated.
   # Args: None
@@ -502,7 +545,8 @@ class TerminalInputUnix:
   # -------------------------------------------------------------------------------------------------------------------
   @staticmethod
   def _Read1(Fd):
-    return os.read(Fd,1)
+    Byte=_TakePending()
+    return Byte if Byte else os.read(Fd,1)
   
   # -------------------------------------------------------------------------------------------------------------------
   # Read one byte from the file descriptor with a timeout; returns empty bytes if no data arrives in time
@@ -510,10 +554,13 @@ class TerminalInputUnix:
   # - Fd (int): File descriptor to read from
   # - Timeout (float,default 0.05): Maximum seconds to wait for data
   # Returns:
-  # - bytes: Single byte read,or empty bytes if the timeout expired
+  # - bytes: Single byte,or empty bytes if the timeout expired
   # -------------------------------------------------------------------------------------------------------------------
   @staticmethod
   def _Read1Timeout(Fd,Timeout=0.05):
+    Byte=_TakePending()
+    if Byte:
+      return Byte
     R,_,_=select.select([Fd],[],[],Timeout)
     return os.read(Fd,1) if R else b""
 
@@ -532,7 +579,10 @@ class TerminalInputUnix:
     elif B0<0xE0: Extra=1
     elif B0<0xF0: Extra=2
     else:         Extra=3
-    Rest=os.read(Fd,Extra) if Extra else b""
+    Rest=b""
+    while len(Rest)<Extra:
+      Byte=_TakePending()
+      Rest+=Byte if Byte else os.read(Fd,1)
     return (First + Rest).decode("utf-8",errors="replace")
 
   # -------------------------------------------------------------------------------------------------------------------
@@ -668,6 +718,13 @@ class TerminalInputUnix:
     cls.SavedTermios=termios.tcgetattr(Fd)
     tty.setraw(Fd)
 
+    #tty.setraw() clears OPOST,disabling ONLCR output translation (\n → \r\n),
+    #so newlines would not return the cursor to column 1. Re-enable it so line
+    #breaks keep working while input stays raw.
+    Attr=termios.tcgetattr(Fd)
+    Attr[1]|=termios.OPOST|termios.ONLCR
+    termios.tcsetattr(Fd,termios.TCSANOW,Attr)
+
   # -------------------------------------------------------------------------------------------------------------------
   # Restore the terminal settings saved by SetRawTerminalMode
   # Args: None
@@ -687,6 +744,8 @@ class TerminalInputUnix:
   # -------------------------------------------------------------------------------------------------------------------
   @classmethod
   def IsKeyboardHit(cls):
+    if _PendingInput:
+      return True
     Fd=sys.stdin.fileno()
     R,_,_=select.select([Fd],[],[],0)
     return bool(R)
@@ -745,33 +804,47 @@ class TerminalInputUnix:
   # -------------------------------------------------------------------------------------------------------------------
   @classmethod
   def GetCursorPos(cls):
+
+    #Without a terminal on both ends the reply can never arrive;do not wait at all
+    if not sys.stdin.isatty() or not sys.stdout.isatty():
+      return None
+
     Fd=sys.stdin.fileno()
     OldAttr=termios.tcgetattr(Fd)
     InRaw=not (OldAttr[3] & termios.ICANON)
     if not InRaw:
       tty.setraw(Fd)
+    Match=None
+    Buf=b""
     try:
-      sys.stdout.buffer.write(ansi.QueryCursorPos().encode("ascii"))
-      sys.stdout.buffer.flush()
-      Buf=b""
-      for _ in range(32):
-        R,_,_=select.select([Fd],[],[],0.5)
-        if not R:
-          break
-        Ch=os.read(Fd,1)
-        Buf+=Ch
-        if Ch==b"R":
+      Query=ansi.QueryCursorPos().encode("ascii")
+
+      #Send the query and wait for the reply,re-sending it when no complete reply
+      #arrives within the per-attempt budget.Keystrokes read while waiting are kept.
+      for _ in range(cls.DSR_ATTEMPTS):
+        sys.stdout.buffer.write(Query)
+        sys.stdout.buffer.flush()
+        Deadline=time.monotonic()+cls.DSR_TIMEOUT
+        while time.monotonic()<Deadline:
+          R,_,_=select.select([Fd],[],[],max(0.0,Deadline-time.monotonic()))
+          if not R:
+            break
+          Buf+=os.read(Fd,1)
+          Match=re.search(cls.DSR_REPLY_PATTERN,Buf)
+          if Match:
+            break
+        if Match:
           break
     finally:
       if not InRaw:
         termios.tcsetattr(Fd,termios.TCSADRAIN,OldAttr)
-    if Buf.startswith(b"\x1b[") and Buf.endswith(b"R"):
-      try:
-        Row,Col=Buf[2:-1].decode("ascii").split(";")
-        return int(Row),int(Col)
-      except Exception:
-        return None
-    return None
+
+    #Push back bytes that are not replies so no keystroke is lost
+    #(duplicate replies caused by re-sent queries are dropped)
+    _FeedPending(re.sub(cls.DSR_REPLY_CLEAN_PATTERN,b"",Buf))
+    if not Match:
+      return None
+    return int(Match.group(1)),int(Match.group(2))
 
   # -------------------------------------------------------------------------------------------------------------------
   # Return terminal size as (Rows,Cols) using TIOCGWINSZ via shutil.get_terminal_size
@@ -863,8 +936,10 @@ def Write(Str,Restore=False,Debug=True):
   
   #In case cursor is at last column and it advanced one less position than length of data,
   #move to next line to avoid overwriting the last character on next write.
+  #(skipped when cursor position is unknown)
   WroteExtraLine=False
-  if _ForceLineBreak==True and CurPos[0]==NewPos[0] \
+  if _ForceLineBreak==True and CurPos!=None and NewPos!=None \
+  and CurPos[0]==NewPos[0] \
   and NewPos[1]==GetTerminalSize()[1] and NewPos[1]==CurPos[1]+(DisplayLength(Str)-1)%GetTerminalSize()[1]:
     debug.Get().Send("terminal.Write(): Writting extra line, current cursos position: "+str(GetCursorPos()))
     sys.stdout.buffer.write(b"\n")
@@ -903,7 +978,11 @@ def GetTerminalSize():
 # Returns: None
 # ---------------------------------------------------------------------------------------------------------------------
 def MoveCursorLinear(Offset):
-  Row,Col=GetCursorPos()
+  Pos=GetCursorPos()
+  if Pos==None:
+    debug.Get().Send(f"terminal.MoveCursorLinear(): Cursor position unavailable,skipping move (Offset={Offset})")
+    return
+  Row,Col=Pos
   Rows,Cols=GetTerminalSize()
   LinearPosition=(Row-1)*Cols+(Col-1)
   NewLinearPosition=max(0,min(Rows*Cols-1,LinearPosition+Offset))
@@ -979,8 +1058,6 @@ def ClipboardSet(Text):
     Command="clip"
   elif IS_LINUX:
     Command="xclip -selection clipboard"
-  elif IS_MACOS:
-    Command="pbcopy"
   subprocess.run(Command.split(" "),input=Text.encode(),check=True)
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -994,8 +1071,6 @@ def ClipboardGet():
     Command="powershell Get-Clipboard"
   elif IS_LINUX:
     Command="xclip -selection clipboard -o"
-  elif IS_MACOS:
-    Command="pbpaste"
   Result=subprocess.run(Command.split(" "),capture_output=True,check=True, encoding="utf-8")
   return Result.stdout
 
