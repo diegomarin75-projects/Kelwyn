@@ -6,7 +6,7 @@
 # - SetRawTerminalMode()                      #Disables line buffering,echo,and Ctrl+C handling
 # - RestoreTerminalMode()                     #Restores terminal mode saved by SetRawTerminalMode
 # - KeyEvent=ReadKey()                        #Returns next key-down event,blocking until available
-# - bool=IsKeyboardHit()                       #Returns True if there are pending keystrokes in the buffer
+# - bool=IsKeyboardHit()                      #Returns True if there are pending keystrokes in the buffer
 # - Write(Data)                               #Writes str or bytes to terminal output
 # - Rows,Cols=GetTerminalSize()               #Returns terminal size,fallback (24,80)
 # - ClearScreen(CursorPosition="bottom")      #Clears screen and place cursor at top or bottom

@@ -17,6 +17,7 @@ from pathlib import Path
 # - Version (string): version number of the application
 # Returns:
 # - args: parsed command line arguments
+# - parser: Argument parser
 # ---------------------------------------------------------------------------
 def GetCommandLineArgs(Version):
   ArgParser=argparse.ArgumentParser(description=f"{const.APP_NAME} - A cross-platform command-line shell interpreter (v{Version})",add_help=True)
@@ -29,8 +30,9 @@ def GetCommandLineArgs(Version):
   ArgParser.add_argument("--skip-init",dest="SkipInit",action="store_true",help="Skip the init script (use with --run or --command)",default=False)
   ArgParser.add_argument("--init-command",dest="InitCommand",type=str,metavar="CMD",help="Command to execute at startup (use with --run)",default=None)
   ArgParser.add_argument("--init-script",dest="InitScript",type=str,metavar="PATH",help="Path to init script to execute at startup (use with --run)",default=None)
+  ArgParser.add_argument("--debug-kb",dest="DebugKb",action="store_true",help="Enters keyboard debugging mode",default=False)
   Args=ArgParser.parse_args()
-  return Args
+  return Args,ArgParser
   
 # ---------------------------------------------------------------------------
 # Start shell interpreter
@@ -126,11 +128,22 @@ def Main():
   Version=utils.GetVersion(MainFilePath)
   
   #Get command line arguments
-  Args=GetCommandLineArgs(Version)
+  Args,ArgParser=GetCommandLineArgs(Version)
   
   #If no arguments provided,print help and exit
-  if Args.Run==False and Args.Command==None:
+  if Args.Run==False and Args.Command==None and Args.DebugKb==False:
     ArgParser.print_help()
+    sys.exit(0)
+
+  #Enter keyboard debugging mode
+  if Args.DebugKb==True:
+    terminal.SetRawTerminalMode()
+    while True:
+      Key=terminal.ReadKey()
+      print(Key)
+      if Key.Code()=="ESCAPE":
+        break 
+    terminal.RestoreTerminalMode()
     sys.exit(0)
 
   #Run shell interpreter in a loop to allow for restarts
