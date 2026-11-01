@@ -140,7 +140,7 @@ def Main():
     terminal.SetRawTerminalMode()
     while True:
       Key=terminal.ReadKey()
-      print(Key)
+      print(Key.Code())
       if Key.Code()=="ESCAPE":
         break 
     terminal.RestoreTerminalMode()

@@ -244,8 +244,8 @@ class Shell:
             else:
               terminal.Write(ansi.SetFgColor(GhostSuggestionColor)+GhostSuggestion+ansi.ResetColor(), Restore=True)
       
-      #Crtl+Alt+Right: Open suggestion selector by wildcard pattern match
-      elif Key.Code()=="CTRL+ALT+RIGHT":
+      #Alt+Shift+Right: Open suggestion selector by wildcard pattern match
+      elif Key.Code()=="ALT+SHIFT+RIGHT":
         Suggestions=self.History.GetAllGhostSuggestions(CommandBuffer,SearchMode="pattern")
         if Suggestions!=None:
           if len(CommandBuffer)!=0 and CursorOffset==len(CommandBuffer) and len(GhostSuggestion)!=0:
