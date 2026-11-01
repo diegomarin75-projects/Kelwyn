@@ -805,22 +805,19 @@ class TerminalInputUnix:
   @classmethod
   def GetCursorPos(cls):
 
-    #Without a terminal on both ends the reply can never arrive;do not wait at all
-    if not sys.stdin.isatty() or not sys.stdout.isatty():
-      return None
-
+    #Set raw terminal mode
     Fd=sys.stdin.fileno()
     OldAttr=termios.tcgetattr(Fd)
     InRaw=not (OldAttr[3] & termios.ICANON)
     if not InRaw:
       tty.setraw(Fd)
+    
+    #Send the query and wait for the reply,re-sending it when no complete reply
+    #arrives within the per-attempt budget.Keystrokes read while waiting are kept.
     Match=None
     Buf=b""
     try:
       Query=ansi.QueryCursorPos().encode("ascii")
-
-      #Send the query and wait for the reply,re-sending it when no complete reply
-      #arrives within the per-attempt budget.Keystrokes read while waiting are kept.
       for _ in range(cls.DSR_ATTEMPTS):
         sys.stdout.buffer.write(Query)
         sys.stdout.buffer.flush()
@@ -842,8 +839,12 @@ class TerminalInputUnix:
     #Push back bytes that are not replies so no keystroke is lost
     #(duplicate replies caused by re-sent queries are dropped)
     _FeedPending(re.sub(cls.DSR_REPLY_CLEAN_PATTERN,b"",Buf))
+    
+    #Exception unable to get cursor position
     if not Match:
-      return None
+      raise Exception("Unable to get cursor position")
+
+    #Return cursor position
     return int(Match.group(1)),int(Match.group(2))
 
   # -------------------------------------------------------------------------------------------------------------------
@@ -978,11 +979,7 @@ def GetTerminalSize():
 # Returns: None
 # ---------------------------------------------------------------------------------------------------------------------
 def MoveCursorLinear(Offset):
-  Pos=GetCursorPos()
-  if Pos==None:
-    debug.Get().Send(f"terminal.MoveCursorLinear(): Cursor position unavailable,skipping move (Offset={Offset})")
-    return
-  Row,Col=Pos
+  Row,Col=GetCursorPos()
   Rows,Cols=GetTerminalSize()
   LinearPosition=(Row-1)*Cols+(Col-1)
   NewLinearPosition=max(0,min(Rows*Cols-1,LinearPosition+Offset))

@@ -212,11 +212,7 @@ def SelectOption(InputOptions,MaxLines,HighlightColor,BackgroundColor=None,Print
       BackColor=""
     
     #Get current cursor position to restore after menu is exited
-    #(fallback to bottom line if position cannot be determined)
-    RestorePos=terminal.GetCursorPos()
-    if RestorePos==None:
-      RestorePos=(terminal.GetTerminalSize()[0],1)
-    RestoreRow,RestoreCol=RestorePos
+    RestoreRow,RestoreCol=terminal.GetCursorPos()
     debug.Get().Send(f"SelectOption: RestoreRow={RestoreRow}, RestoreCol={RestoreCol}, TerminalSize={terminal.GetTerminalSize()}, OptionsCount={len(InputOptions)}")
     
     #Calculate maximun option width, if longer than terminal width, truncate options and add ellipsis
