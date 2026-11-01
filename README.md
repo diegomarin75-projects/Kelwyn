@@ -267,7 +267,7 @@ Example prompt template:
 - `Alt+Up`: previous suggestion
 - `Alt+Down`: next suggestion
 - `Alt+Right`: open prefix-match selection menu
-- `Ctrl+Alt+Right`: open pattern-match selection menu
+- `Shift+Alt+Right`: open pattern-match selection menu
 
 ### Tab completion
 
