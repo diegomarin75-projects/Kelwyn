@@ -33,7 +33,7 @@ kelwyn ~ > _
 
 ## Requirements
 
-- Python 3.10+
+- Python 3.12+
 - Windows, macOS, or Linux
 - No external dependencies (python standard libraries only)
 

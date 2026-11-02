@@ -24,7 +24,36 @@
 
   //Git info timeout (seconds)
   "git_info_timeout_secs":10,
-  
+
+  //Key bindings
+  "key_bindings":{
+    "UP"               : "prev_history_command",
+    "DOWN"             : "next_history_command",
+    "ALT+RIGHT"        : "suggestion_by_prefix",
+    "ALT+SHIFT+RIGHT"  : "suggestion_by_wildcard",
+    "TAB"              : "complete_token",
+    "LEFT"             : "move_left",
+    "RIGHT"            : "move_right",
+    "CTRL+LEFT"        : "move_word_left",
+    "CTRL+RIGHT"       : "move_word_right",
+    "HOME"             : "move_home",
+    "END"              : "move_end",
+    "SHIFT+LEFT"       : "move_left_select",
+    "SHIFT+RIGHT"      : "move_right_select",
+    "CTRL+SHIFT+LEFT"  : "move_word_left_select",
+    "CTRL+SHIFT+RIGHT" : "move_word_right_select",
+    "SHIFT+HOME"       : "move_home_select",
+    "SHIFT+END"        : "move_end_select",
+    "ALT+UP"           : "show_prev_suggestion",
+    "ALT+DOWN"         : "show_next_suggestion",
+    "BACKSPACE"        : "move_back",
+    "DELETE"           : "delete_position",
+    "ESCAPE"           : "prompt_clear",
+    "CTRL+C"           : "selection_copy",
+    "CTRL+D"           : "terminate_shell",
+    "RETURN"           : "execute_command"
+  }, 
+
   //Color theme
   "color_theme":"default_rgb",
 

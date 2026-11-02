@@ -111,6 +111,7 @@ def StartShell(MainFilePath,Version,Args):
     Restart=Sh.Run()
   finally:
     terminal.RestoreTerminalMode()
+    terminal.ShowCursor()
   
   #Signal exit in debug log
   debug.Get().Send(f"{const.APP_NAME} v{Version} terminated ({"command mode: "+Args.Command if Args.Command!=None else "run mode"})")
