@@ -61,6 +61,10 @@ def StartShell(MainFilePath,Version,Args):
   config.Get()["config_file_path"]=ConfigFile
   config.Get()["version"]=Version
   config.Get()["main_file_path"]=MainFilePath
+
+  #Set color theme
+  for Key,Value in config.Get()["color_themes"][config.Get()["color_theme"]].items():
+    config.Get()[Key]=Value
   
   #Get history file
   if Args.HistoryFile!=None:

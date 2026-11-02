@@ -42,35 +42,6 @@ IS_WINDOWS=(platform.system()=="Windows")
 IS_LINUX=(platform.system()=="Linux")
 _ForceLineBreak=True
 
-#Keystrokes consumed from stdin while searching for a cursor position report (DSR)
-#response.They are pushed back here so ReadKey/IsKeyboardHit read them in order.
-_PendingInput=b""
-
-# ---------------------------------------------------------------------------------------------------------------------
-# Push back bytes so they are returned by the next input reads
-# Args:
-# - Data (bytes): Bytes to push back
-# Returns: None
-# ---------------------------------------------------------------------------------------------------------------------
-def _FeedPending(Data):
-  global _PendingInput
-  if Data:
-    _PendingInput+=Data
-
-# ---------------------------------------------------------------------------------------------------------------------
-# Take one pushed-back byte
-# Args: None
-# Returns:
-# - bytes: Single byte,or empty bytes if there are no pushed-back bytes
-# ---------------------------------------------------------------------------------------------------------------------
-def _TakePending():
-  global _PendingInput
-  if not _PendingInput:
-    return b""
-  Byte=_PendingInput[:1]
-  _PendingInput=_PendingInput[1:]
-  return Byte
-
 # ---------------------------------------------------------------------------------------------------------------------
 # Constants for windows
 # ---------------------------------------------------------------------------------------------------------------------
@@ -517,6 +488,10 @@ class TerminalInputUnix:
   #Saved terminal settings for restoration
   SavedTermios=None
 
+  #Keystrokes consumed from stdin while searching for a cursor position report (DSR)
+  #response.They are pushed back here so ReadKey/IsKeyboardHit read them in order.
+  _PendingInput=b""
+
   #Cursor position report (DSR/CPR) reply: ESC [ ? row ; col [; extra] R
   DSR_REPLY_PATTERN=rb"\x1b\[\??(\d+);(\d+)(?:;\d+)?R"
   DSR_REPLY_CLEAN_PATTERN=rb"\x1b\[\??\d+;\d+(?:;\d+)?R"
@@ -537,65 +512,37 @@ class TerminalInputUnix:
     raise TypeError("TerminalInputUnix cannot be instantiated")
 
   # -------------------------------------------------------------------------------------------------------------------
-  # Read exactly one byte from the file descriptor,blocking until available
-  # Args:
-  # - Fd (int): File descriptor to read from
+  # Take one pushed-back byte
+  # Args: None
   # Returns:
-  # - bytes: Single byte read from the file descriptor
+  # - bytes: Single byte,or empty bytes if there are no pushed-back bytes
   # -------------------------------------------------------------------------------------------------------------------
-  @staticmethod
-  def _Read1(Fd):
-    Byte=_TakePending()
-    return Byte if Byte else os.read(Fd,1)
-  
+  @classmethod
+  def _TakePending(cls):
+    if not cls._PendingInput:
+      return b""
+    Byte=cls._PendingInput[:1]
+    cls._PendingInput=cls._PendingInput[1:]
+    return Byte
+
   # -------------------------------------------------------------------------------------------------------------------
-  # Read one byte from the file descriptor with a timeout; returns empty bytes if no data arrives in time
+  # Read exactly one byte from the file descriptor;blocks until available when Timeout is None,
+  #otherwise gives up and returns empty bytes when no data arrives within Timeout seconds
   # Args:
   # - Fd (int): File descriptor to read from
-  # - Timeout (float,default 0.05): Maximum seconds to wait for data
+  # - Timeout (float,default None): Maximum seconds to wait for data;None waits indefinitely
   # Returns:
   # - bytes: Single byte,or empty bytes if the timeout expired
   # -------------------------------------------------------------------------------------------------------------------
-  @staticmethod
-  def _Read1Timeout(Fd,Timeout=0.05):
-    Byte=_TakePending()
+  @classmethod
+  def _ReadByte(cls,Fd,Timeout=None):
+    Byte=cls._TakePending()
     if Byte:
       return Byte
+    if Timeout is None:
+      return os.read(Fd,1)
     R,_,_=select.select([Fd],[],[],Timeout)
     return os.read(Fd,1) if R else b""
-
-  # -------------------------------------------------------------------------------------------------------------------
-  # Read a full UTF-8 character given the first byte already read
-  # Args:
-  # - Fd (int): File descriptor to read continuation bytes from
-  # - First (bytes): First byte of the UTF-8 sequence already consumed
-  # Returns:
-  # - string: Decoded UTF-8 character
-  # -------------------------------------------------------------------------------------------------------------------
-  @staticmethod
-  def _ReadUtf8(Fd,First):
-    B0=First[0]
-    if   B0<0x80: Extra=0
-    elif B0<0xE0: Extra=1
-    elif B0<0xF0: Extra=2
-    else:         Extra=3
-    Rest=b""
-    while len(Rest)<Extra:
-      Byte=_TakePending()
-      Rest+=Byte if Byte else os.read(Fd,1)
-    return (First + Rest).decode("utf-8",errors="replace")
-
-  # -------------------------------------------------------------------------------------------------------------------
-  # Decode an xterm modifier parameter (1-based) into (Shift,Alt,Ctrl) booleans
-  # Args:
-  # - M (int): Modifier parameter value (1-based,as sent in escape sequences)
-  # Returns:
-  # - tuple: (Shift,Alt,Ctrl) as booleans
-  # -------------------------------------------------------------------------------------------------------------------
-  @staticmethod
-  def _DecodeMod(M):
-    Bits=M-1
-    return bool(Bits&1),bool(Bits&2),bool(Bits&4)
 
   #Escape-sequence parsers 
   # -------------------------------------------------------------------------------------------------------------------
@@ -609,13 +556,18 @@ class TerminalInputUnix:
   def _ParseCsi(cls,Fd):
     
     #Is digit
-    def _I(S):
+    def IsDigit(S):
       return int(S) if S.isdigit() else 0
+
+    #Decode an xterm modifier parameter (1-based) into (Shift,Alt,Ctrl) booleans
+    def DecodeModifier(M):
+      Bits=M-1
+      return bool(Bits&1),bool(Bits&2),bool(Bits&4)
     
     #Get input
     Buf=b""
     for _ in range(32):
-      Ch=cls._Read1Timeout(Fd,0.1)
+      Ch=cls._ReadByte(Fd,0.1)
       if not Ch:
         break
       Buf += Ch
@@ -630,9 +582,9 @@ class TerminalInputUnix:
 
     #Kitty keyboard protocol: \x1b[<codepoint>;<mods>u
     if Final=="u":
-      Cp =_I(Parts[0]) if Parts else 0
-      Mod=_I(Parts[1]) if len(Parts)>=2 else 1
-      S,A,C=cls._DecodeMod(Mod)
+      Cp =IsDigit(Parts[0]) if Parts else 0
+      Mod=IsDigit(Parts[1]) if len(Parts)>=2 else 1
+      S,A,C=DecodeModifier(Mod)
       if Cp in UNIX_KITTY_SPECIAL:
         Name=UNIX_KITTY_SPECIAL[Cp]
         Char=None
@@ -647,9 +599,9 @@ class TerminalInputUnix:
 
     #Tilde sequences: \x1b[<n>~ or \x1b[<n>;<mod>~
     if Final=="~":
-      N  =_I(Parts[0]) if Parts else 0
-      Mod=_I(Parts[1]) if len(Parts)>=2 else 1
-      S,A,C=cls._DecodeMod(Mod)
+      N  =IsDigit(Parts[0]) if Parts else 0
+      Mod=IsDigit(Parts[1]) if len(Parts)>=2 else 1
+      S,A,C=DecodeModifier(Mod)
       Name=UNIX_CSI_TILDE.get(N)
       if Name is None:
         return None
@@ -657,8 +609,8 @@ class TerminalInputUnix:
 
     #Letter sequences: \x1b[A or \x1b[1;<mod>A
     if Final in UNIX_CSI_LETTER:
-      Mod=_I(Parts[1]) if len(Parts)>=2 else 1
-      S,A,C=cls._DecodeMod(Mod)
+      Mod=IsDigit(Parts[1]) if len(Parts)>=2 else 1
+      S,A,C=DecodeModifier(Mod)
       Name=UNIX_CSI_LETTER[Final]
       if Final=="Z":   #Shift+Tab – no modifier byte needed
         S=True
@@ -675,7 +627,7 @@ class TerminalInputUnix:
   # -------------------------------------------------------------------------------------------------------------------
   @classmethod
   def _ParseSs3(cls,Fd):
-    Ch=cls._Read1Timeout(Fd,0.05)
+    Ch=cls._ReadByte(Fd,0.05)
     if not Ch:
       return None
     Name=UNIX_SS3.get(chr(Ch[0]))
@@ -698,12 +650,19 @@ class TerminalInputUnix:
       return KeyEvent(Key=UNIX_PLAIN[Byte])
 
     #Control key event if byte is in UNIX_CTRL map
-    if Byte<0x20 or Byte==0x7F:
-      Name=UNIX_CTRL.get(Byte)
-      return KeyEvent(Key=Name,Ctrl=True) if Name else None
+    if Byte<0x20:
+      return KeyEvent(Key=UNIX_CTRL[Byte],Ctrl=True)
 
     #Printable character – assemble full UTF-8 codepoint
-    Char=cls._ReadUtf8(Fd,B)
+    if   Byte<0x80: Extra=0
+    elif Byte<0xE0: Extra=1
+    elif Byte<0xF0: Extra=2
+    else:           Extra=3
+    Rest=b""
+    while len(Rest)<Extra:
+      Ch=cls._TakePending()
+      Rest+=Ch if Ch else os.read(Fd,1)
+    Char=(B+Rest).decode("utf-8",errors="replace")
     Name=Char.upper() if Char.isalpha() else Char
     return KeyEvent(Key=Name,Char=Char)
 
@@ -744,7 +703,7 @@ class TerminalInputUnix:
   # -------------------------------------------------------------------------------------------------------------------
   @classmethod
   def IsKeyboardHit(cls):
-    if _PendingInput:
+    if cls._PendingInput:
       return True
     Fd=sys.stdin.fileno()
     R,_,_=select.select([Fd],[],[],0)
@@ -762,7 +721,7 @@ class TerminalInputUnix:
     #Read bytes until we get a valid key event.
     Fd=sys.stdin.fileno()
     while True:
-      B=cls._Read1(Fd)
+      B=cls._ReadByte(Fd)
       if not B:
         continue
 
@@ -770,7 +729,7 @@ class TerminalInputUnix:
       if B[0]==0x1B:
         
         #Event is escape key
-        NextB=cls._Read1Timeout(Fd,0.05)
+        NextB=cls._ReadByte(Fd,0.05)
         if not NextB:
           return KeyEvent(Key="ESCAPE")
         
@@ -800,7 +759,7 @@ class TerminalInputUnix:
   # Return current cursor position as (Row,Col) 1-based using the ANSI DSR sequence \x1b[6n
   # Args: None
   # Returns:
-  # - tuple: (Row,Col) as 1-based integers,or None if the position could not be determined
+  # - tuple: (Row,Col) as 1-based integers;raises an exception if the position could not be determined
   # -------------------------------------------------------------------------------------------------------------------
   @classmethod
   def GetCursorPos(cls):
@@ -838,7 +797,7 @@ class TerminalInputUnix:
 
     #Push back bytes that are not replies so no keystroke is lost
     #(duplicate replies caused by re-sent queries are dropped)
-    _FeedPending(re.sub(cls.DSR_REPLY_CLEAN_PATTERN,b"",Buf))
+    cls._PendingInput+=re.sub(cls.DSR_REPLY_CLEAN_PATTERN,b"",Buf)
     
     #Exception unable to get cursor position
     if not Match:
@@ -992,7 +951,7 @@ def MoveCursorLinear(Offset):
 # Return current cursor position as (Row,Col) 1-based
 # Args: None
 # Returns:
-# - tuple: (Row,Col) as 1-based integers,or None if the position could not be determined
+# - tuple: (Row,Col) as 1-based integers;raises an exception if the position could not be determined
 # ---------------------------------------------------------------------------------------------------------------------
 def GetCursorPos():
   if IS_WINDOWS:
