@@ -6,15 +6,11 @@
   
   //Alias definitions
   "aliases":{
-    "dir":{"enabled":true,"command":"ls -v"},
-    "copy":{"enabled":true,"command":"$copy"},
-    "del":{"enabled":true,"command":"$del"},
-    "rmdir":{"enabled":true,"command":"$rmdir"},
-    "mkdir":{"enabled":true,"command":"$mkdir"}
+    "dir":{"enabled":true,"command":"ls -v"}
   },
   
   //System prompt
-  "system_prompt":"{%94m%}[<month>/<day>·<hour><min><sec>]{%0m%}<beta> {%92m%}<cwd>{%0m%}<git> {%90m%}>{%0m%} ",
+  "system_prompt":"{%94m%}<user>@<hostname>{%0m%}<beta> {%92m%}<cwd>{%0m%}<git> {%90m%}>{%0m%} ",
   
   //Sizes
   "max_debug_lines":5000,
@@ -24,6 +20,9 @@
 
   //Git info timeout (seconds)
   "git_info_timeout_secs":10,
+
+  //ASCII banner
+  "ascii_banner":"ASCII_BANNER1",
 
   //Key bindings
   "key_bindings":{
@@ -55,7 +54,7 @@
   }, 
 
   //Color theme
-  "color_theme":"default_rgb",
+  "color_theme":"default_ansi",
 
   //Color themes
   "color_themes": {

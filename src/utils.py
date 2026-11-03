@@ -35,10 +35,7 @@ def GetVersion(MainFilePath):
 # - string: Internal representation 
 # ---------------------------------------------------------------------------
 def FilePathDisp2Intr(Str,Config):
-  if platform.system()=="Windows":
-    Result=Str.replace("~",Config["kelwyn_home"])
-  else:
-    Result=Str
+  Result=Str.replace("~",Config["kelwyn_home"])
   return Result
 
 # ---------------------------------------------------------------------------
@@ -50,10 +47,7 @@ def FilePathDisp2Intr(Str,Config):
 # - string: Display representation
 # ---------------------------------------------------------------------------
 def FilePathIntr2Disp(Str,Config):
-  if platform.system()=="Windows":
-    Result=re.sub(re.escape(Config["kelwyn_home"]),"~",Str,flags=re.IGNORECASE)
-  else:
-    Result=Str
+  Result=re.sub(re.escape(Config["kelwyn_home"]),"~",Str,flags=re.IGNORECASE)
   return Result
 
 # ---------------------------------------------------------------------------

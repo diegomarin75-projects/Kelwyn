@@ -3,6 +3,7 @@ import os
 import terminal
 import const
 import debug
+import importlib
 
 #Command metadatap
 def Get():
@@ -18,7 +19,9 @@ def Get():
 #Execute command
 def Execute(Options,Config):
   try:
-    terminal.Write(const.ASCII_BANNER.replace("<version>",Config["version"])+"\n")
+    ConstModule=importlib.import_module("const")
+    AsciiBanner=getattr(ConstModule,Config["ascii_banner"])
+    terminal.Write(AsciiBanner.replace("<version>",Config["version"])+"\n")
   except Exception as Ex:
     print("Error printing banner:",Ex)
     return False
