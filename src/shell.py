@@ -42,6 +42,19 @@ class Shell:
     self.Completer=completer.TabCompleter(CompletersFolder)
 
   # -------------------------------------------------------------------------
+  # Wet window tab title
+  # Args:
+  # - Title (string): Window/Tab title
+  # Returns: None
+  # -------------------------------------------------------------------------
+  def SetTitle(self,Title=None):
+    if Title==None:
+      TitleText=const.APP_NAME+" "+utils.FilePathIntr2Disp(os.getcwd(),config.Get())
+    else:
+      TitleText=Title
+    terminal.Write(ansi.SetTitle(TitleText))
+
+  # -------------------------------------------------------------------------
   # Move by word to the left (Ctrl+Left) or right (Ctrl+Right)
   # Args:
   # - Direction (string): "LEFT" or "RIGHT"
@@ -133,6 +146,9 @@ class Shell:
     if self.Command!=None:
       Result=self.Dispatcher.ExecuteCommand(self.Command)
       return False
+
+    #Set title
+    self.SetTitle()
 
     #Write initial prompt
     terminal.Write(self.Prompt.Get())
@@ -504,10 +520,18 @@ class Shell:
         #Get current path
         CurrentPath=os.getcwd()
         
-        #Execute command
+        #Prepare cursor and title
         terminal.ShowCursor()
+        self.SetTitle(CommandBuffer.split(" ")[0])
+        
+        #Execute command
         Result=self.Dispatcher.ExecuteCommandLine(CommandBuffer)
+        
+        #Restore cursor and title
         terminal.HideCursor()
+        self.SetTitle()
+        
+        #Check result
         if Result.Event==dispatcher.DispatcherResult.TERMINATE:
           break
         if Result.Event==dispatcher.DispatcherResult.RESTART:

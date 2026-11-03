@@ -6,7 +6,7 @@ import fnmatch
 #Command metadatap
 def Get():
   return {
-    "name":"lsvar",
+    "name":"get",
     "description":"List environment variables",
     "options":[
       {"type":"positional","name":"Filter","index":1,"mandatory":False,"display":"<filter>", "description":"Wildcard pattern filter"}

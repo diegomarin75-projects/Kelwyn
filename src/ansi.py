@@ -11,7 +11,7 @@ import re
 # ---------------------------------------------------------------------------------------------------------------------
 # Escape sequences for colors screen and and cursor control
 # ---------------------------------------------------------------------------------------------------------------------
-_ESCAPE_PREFIX    ="\033["
+_ESCAPE_PREFIX    ="\x1B["
 _CLEAR_SCREEN     =_ESCAPE_PREFIX+"2J"
 _CURSOR_GO_HOME   =_ESCAPE_PREFIX+"H"
 _CURSOR_SET_POS   =_ESCAPE_PREFIX+"{row};{col}H"
@@ -27,6 +27,7 @@ _ENTER_ALT_SCREEN =_ESCAPE_PREFIX+"?1049h"
 _EXIT_ALT_SCREEN  =_ESCAPE_PREFIX+"?1049l"
 _HIDE_CURSOR      =_ESCAPE_PREFIX+"?25l"
 _SHOW_CURSOR      =_ESCAPE_PREFIX+"?25h"
+_SET_TITLE        ="\x1B]2;{title}\x07"
 
 # ---------------------------------------------------------------------------------------------------------------------
 # ANSI color codes
@@ -207,6 +208,16 @@ def HideCursor():
 # ---------------------------------------------------------------------------------------------------------------------
 def ShowCursor():
   return _SHOW_CURSOR
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Sets window/tab title
+# Args:
+# - Title (string): Window/Tab title
+# Returns:
+# - string: ANSI escape sequence to set the window/tab title
+# ---------------------------------------------------------------------------------------------------------------------
+def SetTitle(Title):
+  return _SET_TITLE.replace("{title}",Title)
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Return a complete ANSI escape sequence by prepending the escape prefix to the given payload
