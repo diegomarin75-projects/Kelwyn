@@ -1,4 +1,4 @@
-  # ---------------------------------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------------------------
 # dispatcher.py: Command dispatcher
 # ---------------------------------------------------------------------------------------------------------------------
 
@@ -185,8 +185,9 @@ class CommandDispatcher:
   # -------------------------------------------------------------------------------------------------------------------
   def PrintCommandList(self):
     MaxCmdLength=max([len(Cmd) for Cmd in self.CommandDir.keys()]) if len(self.CommandDir)>0 else 0
+    SortedCommands=sorted(self.CommandDir.keys())
     Output="Available commands:\n"
-    for Cmd in self.CommandDir.keys():
+    for Cmd in SortedCommands:
       Description=self.CommandDir[Cmd]['get']()['description'].split("\n")[0] if self.CommandDir[Cmd]['get']!=None else "No description available"
       Output+=f"{Cmd.ljust(MaxCmdLength)} : {Description}\n"
     Output+=f"{"exit".ljust(MaxCmdLength)} : Exit the shell\n"

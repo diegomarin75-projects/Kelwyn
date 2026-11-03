@@ -35,10 +35,7 @@ def GetVersion(MainFilePath):
 # - string: Internal representation 
 # ---------------------------------------------------------------------------
 def FilePathDisp2Intr(Str,Config):
-  if platform.system()=="Windows":
-    Result=Str.replace("~",Config["kelwyn_home"])
-  else:
-    Result=Str
+  Result=Str.replace("~",Config["kelwyn_home"])
   return Result
 
 # ---------------------------------------------------------------------------
@@ -50,10 +47,7 @@ def FilePathDisp2Intr(Str,Config):
 # - string: Display representation
 # ---------------------------------------------------------------------------
 def FilePathIntr2Disp(Str,Config):
-  if platform.system()=="Windows":
-    Result=re.sub(re.escape(Config["kelwyn_home"]),"~",Str,flags=re.IGNORECASE)
-  else:
-    Result=Str
+  Result=re.sub(re.escape(Config["kelwyn_home"]),"~",Str,flags=re.IGNORECASE)
   return Result
 
 # ---------------------------------------------------------------------------
@@ -201,7 +195,6 @@ def SelectOption(InputOptions,MaxLines,HighlightColor,BackgroundColor=None,Print
   try:
   
     #Hide cursor and do not force ending line break when writting to the last terminal column
-    terminal.HideCursor()
     terminal.SetForceLineBreak(False)
     
     #Set HighlightColor and BackgroundColor ANSI strings
@@ -369,13 +362,11 @@ def SelectOption(InputOptions,MaxLines,HighlightColor,BackgroundColor=None,Print
   except Exception as Ex:
     debug.Get().Send(f"SelectOption: Exception occurred: {str(Ex)}")
     terminal.SetForceLineBreak(True)
-    terminal.ShowCursor()
     return None
   
   #Ensure cursor is shown again and line break is forced on exit
   finally:
     terminal.SetForceLineBreak(True)
-    terminal.ShowCursor()
 
   #Return selected option
   return None if SelectedIndex==None else OptionOffset+SelectedIndex

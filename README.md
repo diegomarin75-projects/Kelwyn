@@ -25,7 +25,7 @@ kelwyn ~ > _
 - **Inline expression and command evaluation**: use `eval(<python_expression>)` and `exec(<command>)` directly inside commands, with nested inner-first resolution.
 - **Output redirection and background execution**: redirect stdout/stderr to files and launch commands in background.
 - **System command integration**: run external commands directly, with configurable shell pass-through commands.
-- **Comprehensive configuration**: External JSON-based configuration (`cfg/kelwyn-cfg.json`) to manage history/log paths, UI behavior, and detailed color schemes.
+- **Comprehensive configuration**: External JSON-based configuration (`cfg/kelwyn-cfg.json`) to manage history/log paths, UI behavior, key bindings, ASCII banners, and color themes.
 - **Advanced UI styling**: Support for HEX color codes and named ANSI colors for directory listings, git status (clean/dirty/conflict), and completion menus.
 - **Extensible architecture**: easily add new commands, completers, and prompt whippets by dropping Python modules into designated folders.
 
@@ -33,8 +33,8 @@ kelwyn ~ > _
 
 ## Requirements
 
-- Python 3.10+
-- Windows, macOS, or Linux
+- Python 3.12+
+- Windows or Linux
 - No external dependencies (python standard libraries only)
 
 ---
@@ -49,6 +49,7 @@ python src/kelwyn.py --run --init-command "print hello"
 python src/kelwyn.py --run --init-script path/to/init.kel
 python src/kelwyn.py --run --history path/to/.kelwyn_history
 python src/kelwyn.py --run --debug-log path/to/.kelwyn_debug.log
+python src/kelwyn.py --debug-kb
 ```
 
 ### CLI flags
@@ -61,10 +62,11 @@ python src/kelwyn.py --run --debug-log path/to/.kelwyn_debug.log
 - `--init-script PATH`: execute script file line by line at startup
 - `--history PATH`: override history file location
 - `--debug-log PATH`: override debug log location
+- `--debug-kb`: enter keyboard debugging mode (prints each key code until `Escape`)
 
 ### Notes
 
-- If neither `--run` nor `--command` is provided, Kelwyn prints help and exits.
+- If none of `--run`, `--command`, or `--debug-kb` is provided, Kelwyn prints help and exits.
 - `--run` and `--command` are mutually exclusive.
 - In `--command` mode, Kelwyn executes startup init hooks first (unless skipped), then runs the command and exits.
 
@@ -92,7 +94,7 @@ Init script rules:
 
 ## Configuration
 
-Kelwyn uses an external JSON configuration file at `cfg/kelwyn-cfg.json`. This file controls core behavior, interface sizes, and color schemes.
+Kelwyn uses an external JSON configuration file at `cfg/kelwyn-cfg.json`. This file controls core behavior, interface sizes, key bindings, banner selection, and color themes.
 
 ### Key Configuration Settings
 
@@ -100,7 +102,9 @@ Kelwyn uses an external JSON configuration file at `cfg/kelwyn-cfg.json`. This f
 - **Shell pass-through list**: `pass_through_commands` defines commands executed through host shell behavior.
 - **System Prompt**: Template string using whippets (e.g., `"<month>/<day>·<hour><min><sec>"`).
 - **Interface Limits**: Max history lines, debug log size, and UI component heights.
-- **Color Customization**: Support for HEX codes (e.g., `"#FF5555"`) and ANSI color names (e.g., `"bright_cyan"`) across all UI elements:
+- **ASCII banner**: `ascii_banner` selects which banner the `banner` command displays (`ASCII_BANNER1` or `ASCII_BANNER2`).
+- **Key bindings**: `key_bindings` maps key codes (e.g., `"UP"`, `"CTRL+LEFT"`, `"ALT+SHIFT+RIGHT"`) to editing actions (e.g., `prev_history_command`, `move_word_left`, `suggestion_by_wildcard`), so keys can be remapped without touching the code.
+- **Color themes**: colors are grouped in named themes under `color_themes` (built-in `default_rgb` and `default_ansi`), and `color_theme` selects the active one at startup. Theme values support HEX codes (e.g., `"#FF5555"`) and ANSI color names (e.g., `"bright_cyan"`) across all UI elements:
   - Error messages and ghost suggestions.
   - Selection colors (foreground/background).
   - Completion and Command Box styling.
@@ -223,7 +227,11 @@ Kelwyn resolves calls from the most-inner outward in a loop:
 
 ### Prompt
 
-Default prompt template includes date/time, current directory, and git status:
+Default prompt template includes user@hostname, the beta marker, current directory, and git status:
+
+```text
+{%94m%}<user>@<hostname>{%0m%}<beta> {%92m%}<cwd>{%0m%}<git> {%90m%}>{%0m%} 
+```
 
 - git branch
 - modified count (`:*`)
@@ -267,7 +275,7 @@ Example prompt template:
 - `Alt+Up`: previous suggestion
 - `Alt+Down`: next suggestion
 - `Alt+Right`: open prefix-match selection menu
-- `Ctrl+Alt+Right`: open pattern-match selection menu
+- `Shift+Alt+Right`: open pattern-match selection menu
 
 ### Tab completion
 
@@ -294,6 +302,8 @@ Example prompt template:
 - `Enter`: execute command
 - `Ctrl+D`: exit shell
 
+These are the default bindings; every action above is remappable through the `key_bindings` section of the configuration file.
+
 ---
 
 ## Command reference
@@ -309,6 +319,10 @@ banner
 Options:
 
 - none
+
+Notes:
+
+- The displayed banner is chosen by the `ascii_banner` configuration setting (`ASCII_BANNER1` or `ASCII_BANNER2`).
 
 ### cd - Change current working directory
 
@@ -366,6 +380,25 @@ Notes:
 
 - Wildcards are only supported in the last path segment.
 - Entries containing non-printable characters are highlighted using `global_file_error_color`.
+
+### lsvar - List environment variables
+
+Usage:
+
+```text
+lsvar [filter]
+```
+
+Options:
+
+- `[filter]` (optional positional): wildcard pattern to filter variable names (e.g., `*PYTHON*`); lists all variables when omitted
+
+Examples:
+
+```text
+lsvar
+lsvar *PYTHON*
+```
 
 ### print - Print text to console
 

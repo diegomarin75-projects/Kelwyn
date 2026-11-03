@@ -14,23 +14,42 @@ import ansi
 #Application name
 APP_NAME="kelwyn"
 
-# Application banner
-BANNER_COLOR1="#009000"
-BANNER_COLOR2="#106410"
-BANNER_COLOR3="#404040"
-ASCII_BANNER=rf"""
+# Application banner 1
+BANNER1_COLOR1="#009000"
+BANNER1_COLOR2="#106410"
+BANNER1_COLOR3="#404040"
+ASCII_BANNER1=rf"""
 ██╗ ██╗████╗██╗   ██╗    ██╗██╗   ██╗███╗  ██╗
 ████╔╝ ██╗  ██║   ██║ █╗ ██║ ╚████╔╝ ██╔██╗██║
 ██║ ██╗████╗█████╗╚███╔███╔╝   ██║   ██║ ╚███║
 ╚═╝ ╚═╝╚═══╝╚════╝ ╚══╝╚══╝    ╚═╝   ╚═╝  ╚══╝  (v<version>)
 """ \
-.replace("█",ansi.SetFgColor(BANNER_COLOR1)+"█"+ansi.ResetColor()) \
-.replace("╗",ansi.SetFgColor(BANNER_COLOR2)+"╗"+ansi.ResetColor()) \
-.replace("╔",ansi.SetFgColor(BANNER_COLOR2)+"╔"+ansi.ResetColor()) \
-.replace("╚",ansi.SetFgColor(BANNER_COLOR2)+"╚"+ansi.ResetColor()) \
-.replace("║",ansi.SetFgColor(BANNER_COLOR2)+"║"+ansi.ResetColor()) \
-.replace("╝",ansi.SetFgColor(BANNER_COLOR3)+"╝"+ansi.ResetColor()) \
-.replace("═",ansi.SetFgColor(BANNER_COLOR3)+"═"+ansi.ResetColor())
+.replace("█",ansi.SetFgColor(BANNER1_COLOR1)+"█"+ansi.ResetColor()) \
+.replace("╗",ansi.SetFgColor(BANNER1_COLOR2)+"╗"+ansi.ResetColor()) \
+.replace("╔",ansi.SetFgColor(BANNER1_COLOR2)+"╔"+ansi.ResetColor()) \
+.replace("╚",ansi.SetFgColor(BANNER1_COLOR2)+"╚"+ansi.ResetColor()) \
+.replace("║",ansi.SetFgColor(BANNER1_COLOR2)+"║"+ansi.ResetColor()) \
+.replace("╝",ansi.SetFgColor(BANNER1_COLOR3)+"╝"+ansi.ResetColor()) \
+.replace("═",ansi.SetFgColor(BANNER1_COLOR3)+"═"+ansi.ResetColor())
+
+# Application banner 1
+BANNER2_COLOR1="#5555FF"
+BANNER2_COLOR2="#0000FF"
+ASCII_BANNER2=rf"""
+ █████               ████                                       
+░░███               ░░███                                       
+ ░███ █████  ██████  ░███  █████ ███ █████ █████ ████ ████████  
+ ░███░░███  ███░░███ ░███ ░░███ ░███░░███ ░░███ ░███ ░░███░░███ 
+ ░██████░  ░███████  ░███  ░███ ░███ ░███  ░███ ░███  ░███ ░███ 
+ ░███░░███ ░███░░░   ░███  ░░███████████   ░███ ░███  ░███ ░███ 
+ ████ █████░░██████  █████  ░░████░████    ░░███████  ████ █████
+░░░░ ░░░░░  ░░░░░░  ░░░░░    ░░░░ ░░░░      ░░░░░███ ░░░░ ░░░░░   (v<version>)
+                                            ███ ░███            
+                                           ░░██████             
+                                            ░░░░░░              
+""" \
+.replace("█",ansi.SetFgColor(BANNER2_COLOR1)+"█"+ansi.ResetColor()) \
+.replace("░",ansi.SetFgColor(BANNER2_COLOR2)+"░"+ansi.ResetColor())
 
 # Wellcome lines
 WELCOME_LINES=[

@@ -42,6 +42,19 @@ class Shell:
     self.Completer=completer.TabCompleter(CompletersFolder)
 
   # -------------------------------------------------------------------------
+  # Wet window tab title
+  # Args:
+  # - Title (string): Window/Tab title
+  # Returns: None
+  # -------------------------------------------------------------------------
+  def SetTitle(self,Title=None):
+    if Title==None:
+      TitleText=const.APP_NAME+" "+utils.FilePathIntr2Disp(os.getcwd(),config.Get())
+    else:
+      TitleText=Title
+    terminal.Write(ansi.SetTitle(TitleText))
+
+  # -------------------------------------------------------------------------
   # Move by word to the left (Ctrl+Left) or right (Ctrl+Right)
   # Args:
   # - Direction (string): "LEFT" or "RIGHT"
@@ -134,6 +147,9 @@ class Shell:
       Result=self.Dispatcher.ExecuteCommand(self.Command)
       return False
 
+    #Set title
+    self.SetTitle()
+
     #Write initial prompt
     terminal.Write(self.Prompt.Get())
 
@@ -142,6 +158,7 @@ class Shell:
     while True:
 
       #Read key (loops until a non-printable key is encountered, storing printable characters in InputChars)
+      terminal.ShowCursor()
       if NextKey!=None:
         Key=NextKey
         NextKey=None
@@ -157,13 +174,17 @@ class Shell:
             NextKey=Key
             Key=terminal.KeyEvent()
             break
+      terminal.HideCursor()
 
       #Debug log
       debug.Get().Send("·"*120, Raw=True)
       debug.Get().Send(f"Key event: Code={Key.Code()} Char={Key.Char!r} InputChars={InputChars!r}")
 
+      #Get key command
+      KeyCommand=config.Get()["key_bindings"][Key.Code()] if Key.Code() in config.Get()["key_bindings"] else None
+
       #Clear selection and rewrite command line if key is not a selection relevant key
-      if Key.Code() not in ["SHIFT+LEFT","SHIFT+RIGHT","CTRL+SHIFT+LEFT","CTRL+SHIFT+RIGHT","SHIFT+HOME","SHIFT+END","CTRL+C","DELETE","BACKSPACE"] \
+      if KeyCommand not in ["move_left_select","move_right_select","move_word_left_select","move_word_right_select","move_home_select","move_end_select","selection_copy","delete_position","move_back"] \
       and len(InputChars)==0 and SelectionBegin!=None:
         debug.Get().Send("Clearing selection")
         terminal.MoveCursorLinear(-CursorOffset)
@@ -173,7 +194,7 @@ class Shell:
         SelectionEnd=None
       
       #Up arrow: Previous command in history
-      if Key.Code()=="UP":
+      if KeyCommand=="prev_history_command":
         if HistoryIndex==-1:
           HistoryIndex=len(self.History.GetCommands())-1
         elif HistoryIndex>0:
@@ -190,7 +211,7 @@ class Shell:
           PrevGhostIndex=0
 
       #Down arrow: Next command in history
-      elif Key.Code()=="DOWN":
+      elif KeyCommand=="next_history_command":
         if HistoryIndex>=0:
           HistoryIndex+=1
           PrevCommandBuffer=CommandBuffer
@@ -208,13 +229,13 @@ class Shell:
           PrevGhostIndex=0
 
       #Left arrow
-      elif Key.Code()=="LEFT":
+      elif KeyCommand=="move_left":
         if CursorOffset>0:
           terminal.MoveCursorLinear(-1)
           CursorOffset-=1
       
       #Right arrow
-      elif Key.Code()=="RIGHT":
+      elif KeyCommand=="move_right":
         if CursorOffset==len(CommandBuffer):
           if len(GhostSuggestion)!=0:
             CommandBuffer+=GhostSuggestion
@@ -226,7 +247,7 @@ class Shell:
           CursorOffset+=1
       
       #Alt+Right: Open suggestion selector by prefix match if cursor is at end of buffer and ghost suggestion exists
-      elif Key.Code()=="ALT+RIGHT":
+      elif KeyCommand=="suggestion_by_prefix":
         if CursorOffset==len(CommandBuffer) and len(GhostSuggestion)!=0:
           Suggestions=self.History.GetAllGhostSuggestions(CommandBuffer,SearchMode="prefix")
           if Suggestions!=None:
@@ -244,8 +265,8 @@ class Shell:
             else:
               terminal.Write(ansi.SetFgColor(GhostSuggestionColor)+GhostSuggestion+ansi.ResetColor(), Restore=True)
       
-      #Crtl+Alt+Right: Open suggestion selector by wildcard pattern match
-      elif Key.Code()=="CTRL+ALT+RIGHT":
+      #Alt+Shift+Right: Open suggestion selector by wildcard pattern match
+      elif KeyCommand=="suggestion_by_wildcard":
         Suggestions=self.History.GetAllGhostSuggestions(CommandBuffer,SearchMode="pattern")
         if Suggestions!=None:
           if len(CommandBuffer)!=0 and CursorOffset==len(CommandBuffer) and len(GhostSuggestion)!=0:
@@ -263,21 +284,21 @@ class Shell:
             terminal.Write(ansi.SetFgColor(GhostSuggestionColor)+GhostSuggestion+ansi.ResetColor(), Restore=True)
       
       #Ctrl+Left arrow: Move cursor left by word
-      elif Key.Code()=="CTRL+LEFT":
+      elif KeyCommand=="move_word_left":
         if CursorOffset>0:
           NewOffset=self.MoveCursorByWord("LEFT",CommandBuffer,CursorOffset)
           terminal.MoveCursorLinear(NewOffset-CursorOffset)
           CursorOffset=NewOffset
       
       #Ctrl+Right arrow: Move cursor right by word
-      elif Key.Code()=="CTRL+RIGHT":
+      elif KeyCommand=="move_word_right":
         if CursorOffset<len(CommandBuffer):
           NewOffset=self.MoveCursorByWord("RIGHT",CommandBuffer,CursorOffset)
           terminal.MoveCursorLinear(NewOffset-CursorOffset)
           CursorOffset=NewOffset
       
       #Tab completion
-      elif Key.Code()=="TAB":
+      elif KeyCommand=="complete_token":
         if len(CommandBuffer)!=0:
           debug.Get().Send("Triggering tab completion for buffer: "+CommandBuffer)
           Completed=self.Completer.Complete(CommandBuffer,CursorOffset)
@@ -289,17 +310,17 @@ class Shell:
             CursorOffset=len(Completed)
 
       #Home
-      elif Key.Code()=="HOME":
+      elif KeyCommand=="move_home":
         terminal.MoveCursorLinear(-CursorOffset)
         CursorOffset=0
       
       #End
-      elif Key.Code()=="END":
+      elif KeyCommand=="move_end":
         terminal.MoveCursorLinear(len(CommandBuffer)-CursorOffset)
         CursorOffset=len(CommandBuffer)
       
       #Shift+Left arrow: Select character backwards (is selection is active, expands or shrinks selection by moving cursor left)
-      elif Key.Code()=="SHIFT+LEFT":
+      elif KeyCommand=="move_left_select":
         if CursorOffset>0:
           if SelectionBegin==None or (SelectionBegin!=None and SelectionBegin>=SelectionEnd):
             if SelectionBegin==None:
@@ -315,7 +336,7 @@ class Shell:
             SelectionEnd=CursorOffset
 
       #Shift+Right arrow: Select character forwards
-      elif Key.Code()=="SHIFT+RIGHT":
+      elif KeyCommand=="move_right_select":
         if CursorOffset<len(CommandBuffer):
           if SelectionBegin==None or (SelectionBegin!=None and SelectionBegin<=SelectionEnd):
             if SelectionBegin==None:
@@ -331,7 +352,7 @@ class Shell:
             SelectionEnd=CursorOffset
       
       #Ctrl+Shift+Left arrow: Select word backwards
-      elif Key.Code()=="CTRL+SHIFT+LEFT":
+      elif KeyCommand=="move_word_left_select":
         if CursorOffset>0:
           NewOffset=self.MoveCursorByWord("LEFT",CommandBuffer,CursorOffset)
           if SelectionBegin==None or (SelectionBegin!=None and SelectionBegin>=SelectionEnd):
@@ -350,7 +371,7 @@ class Shell:
             SelectionEnd=CursorOffset
       
       #Ctrl+Shift+Right arrow: Select word forwards
-      elif Key.Code()=="CTRL+SHIFT+RIGHT":
+      elif KeyCommand=="move_word_right_select":
         if CursorOffset<len(CommandBuffer):
           NewOffset=self.MoveCursorByWord("RIGHT",CommandBuffer,CursorOffset)
           if SelectionBegin==None or (SelectionBegin!=None and SelectionBegin<=SelectionEnd):
@@ -368,8 +389,8 @@ class Shell:
             CursorOffset=NewOffset
             SelectionEnd=CursorOffset
 
-      #Shoft+Home: Select to beginning of line
-      elif Key.Code()=="SHIFT+HOME":
+      #Shift+Home: Select to beginning of line
+      elif KeyCommand=="move_home_select":
         if CursorOffset>0:
           if SelectionBegin==None or (SelectionBegin!=None and SelectionBegin>=SelectionEnd):
             if SelectionBegin==None:
@@ -387,7 +408,7 @@ class Shell:
             SelectionEnd=0
       
       #Shift+End: Select to end of line
-      elif Key.Code()=="SHIFT+END":
+      elif KeyCommand=="move_end_select":
         if CursorOffset<len(CommandBuffer):
           if SelectionBegin==None or (SelectionBegin!=None and SelectionBegin<=SelectionEnd):
             if SelectionBegin==None:
@@ -403,15 +424,15 @@ class Shell:
             SelectionEnd=len(CommandBuffer)
       
       #Alt+Up arrow: Previous ghost suggestion
-      elif Key.Code()=="ALT+UP":
+      elif KeyCommand=="show_prev_suggestion":
         GhostIndex+=1
       
       #Alt+Down arrow: Next ghost suggestion
-      elif Key.Code()=="ALT+DOWN":
+      elif KeyCommand=="show_next_suggestion":
         GhostIndex-=1
       
       #Backspace (deletes character before cursor position, or current selection)
-      elif Key.Code()=="BACKSPACE":
+      elif KeyCommand=="move_back":
         if SelectionBegin!=None:
           Start=min(SelectionBegin,SelectionEnd)
           End=max(SelectionBegin,SelectionEnd)
@@ -430,7 +451,7 @@ class Shell:
           CursorOffset-=1
       
       #Delete (deletes character at cursor position, or current selection)
-      elif Key.Code()=="DELETE":
+      elif KeyCommand=="delete_position":
         if SelectionBegin!=None:
           Start=min(SelectionBegin,SelectionEnd)
           End=max(SelectionBegin,SelectionEnd)
@@ -447,7 +468,7 @@ class Shell:
           terminal.MoveCursorLinear(CursorOffset-len(CommandBuffer)-1)
       
       #Escape: Clear command buffer and move cursor to prompt position
-      elif Key.Code()=="ESCAPE":
+      elif KeyCommand=="prompt_clear":
         debug.Get().Send("Escape key pressed: clearing command buffer")
         terminal.MoveCursorLinear(-CursorOffset)
         terminal.Write(" "*(len(CommandBuffer)+len(GhostSuggestion)), Restore=True)
@@ -459,7 +480,7 @@ class Shell:
         PrevGhostIndex=0
 
       #Ctrl-C: Copy selection to clipboard if selection exists
-      elif Key.Code()=="CTRL+C":
+      elif KeyCommand=="selection_copy":
         
         #If selection exists, copy to clipboard and clear selection
         if SelectionBegin!=None:
@@ -479,12 +500,12 @@ class Shell:
           SelectionEnd=None
       
       #Ctrl-D: Terminate shell
-      elif Key.Code()=="CTRL+D":
+      elif KeyCommand=="terminate_shell":
         terminal.Write("\n")
         break
       
       #Enter
-      elif Key.Code()=="RETURN":
+      elif KeyCommand=="execute_command":
         
         #Move cursor to end of line
         terminal.MoveCursorLinear(len(CommandBuffer)-CursorOffset)
@@ -499,8 +520,18 @@ class Shell:
         #Get current path
         CurrentPath=os.getcwd()
         
+        #Prepare cursor and title
+        terminal.ShowCursor()
+        self.SetTitle(CommandBuffer.split(" ")[0])
+        
         #Execute command
         Result=self.Dispatcher.ExecuteCommandLine(CommandBuffer)
+        
+        #Restore cursor and title
+        terminal.HideCursor()
+        self.SetTitle()
+        
+        #Check result
         if Result.Event==dispatcher.DispatcherResult.TERMINATE:
           break
         if Result.Event==dispatcher.DispatcherResult.RESTART:
@@ -548,7 +579,8 @@ class Shell:
         GhostSelected=self.History.GetGhostSuggestion(CommandBuffer,GhostIndex)
         if GhostSelected!=None:
           if len(GhostSuggestion)!=0:
-            ExtraSpace=1 if Key.Code()=="BACKSPACE" else 0
+            ExtraSpace=1 if KeyCommand=="move_back" else 0
+            #ExtraSpace=1 if Key.Code()=="BACKSPACE" else 0
             terminal.Write(" "*(len(GhostSuggestion)+ExtraSpace), Restore=True)
           terminal.Write(ansi.SetFgColor(GhostSuggestionColor)+GhostSelected+ansi.ResetColor(), Restore=True)
           GhostSuggestion=GhostSelected
@@ -561,7 +593,8 @@ class Shell:
         debug.Get().Send("Ghost suggestion clear mode 2")
       if GhostSuggestionClear==True:
         debug.Get().Send("Ghost suggestion clear triggered")
-        ExtraSpace=1 if Key.Code()=="BACKSPACE" else 0
+        ExtraSpace=1 if KeyCommand=="move_back" else 0
+        #ExtraSpace=1 if Key.Code()=="BACKSPACE" else 0
         terminal.MoveCursorLinear(len(CommandBuffer)+ExtraSpace-CursorOffset)
         terminal.Write(" "*(len(GhostSuggestion)), Restore=True)
         terminal.MoveCursorLinear(-(len(CommandBuffer)+ExtraSpace-CursorOffset))
@@ -572,6 +605,9 @@ class Shell:
       PrevCommandBuffer=CommandBuffer
       PrevCursorOffset=CursorOffset
       PrevGhostIndex=GhostIndex
+
+    #Show cursor on exit
+    terminal.ShowCursor()
     
     #Return restart flag
     return Restart
