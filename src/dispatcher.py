@@ -301,19 +301,32 @@ class CommandDispatcher:
   # ---------------------------------------------------------------------------
   def ExecProcess(self,Command,Shell=True,Capture=None,Detached=False):
     debug.Get().Send(f"Execute process call: {Command} Shell={Shell} Capture={Capture} Detached={Detached}")
+
+    #A foreground process is given the terminal in its normal (cooked) mode while it runs
+    #and the shell takes it back (raw mode) as soon as it finishes; while waiting the shell
+    #also ignores the signals the terminal delivers for the process group,so only the child
+    #reacts to them. All of it (tty/console mode plus signal dispositions,including the child
+    #reset where signal dispositions are inherited by children) is performed by the terminal
+    #library: BeginForegroundProcess hands the terminal over and returns the saved signal
+    #state (for EndForegroundProcess) and the child reset to use with the spawn (None where
+    #not needed);EndForegroundProcess takes the terminal back.
+    ForegroundState=None
+    ChildSignals=None
     try:
+      if Detached==False:
+        ForegroundState,ChildSignals=terminal.BeginForegroundProcess()
       if Capture=="1":
-        Proc=subprocess.Popen(Command,shell=Shell,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True,encoding="utf-8")
+        Proc=subprocess.Popen(Command,shell=Shell,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True,encoding="utf-8",preexec_fn=ChildSignals)
         Output=Proc.communicate()[0]
         ReturnCode=Proc.returncode
         Status=True
       elif Capture=="2":
-        Proc=subprocess.Popen(Command,shell=Shell,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,text=True,encoding="utf-8")
+        Proc=subprocess.Popen(Command,shell=Shell,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,text=True,encoding="utf-8",preexec_fn=ChildSignals)
         Output=Proc.communicate()[1]
         ReturnCode=Proc.returncode
         Status=True
       elif Capture=="all":
-        Proc=subprocess.Popen(Command,shell=Shell,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,encoding="utf-8")
+        Proc=subprocess.Popen(Command,shell=Shell,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,encoding="utf-8",preexec_fn=ChildSignals)
         Output=Proc.communicate()[0]
         ReturnCode=Proc.returncode
         Status=True
@@ -323,7 +336,7 @@ class CommandDispatcher:
         ReturnCode=None
         Status=True
       else:
-        Proc=subprocess.Popen(Command,shell=Shell,encoding="utf-8")
+        Proc=subprocess.Popen(Command,shell=Shell,encoding="utf-8",preexec_fn=ChildSignals)
         Proc.wait()
         Output=None
         ReturnCode=Proc.returncode
@@ -336,6 +349,8 @@ class CommandDispatcher:
       Output=f"Command execution exception: {Ex}"
       ReturnCode=None
       Status=False
+    finally:
+      terminal.EndForegroundProcess(ForegroundState)
     debug.Get().Send(f"Execute process result: Status={Status} ReturnCode={ReturnCode} Output='{Output.replace("\n","\\n") if Output!=None else Output}'")
     return Status,ReturnCode,Output
 
