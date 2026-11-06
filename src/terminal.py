@@ -331,25 +331,6 @@ class TerminalInputWindows:
       windll.kernel32.SetConsoleMode(cls._GetHandle(),cls.SavedMode)
 
   # -------------------------------------------------------------------------------------------------------------------
-  # Give the terminal to a foreground process: Nothing to do on windows
-  # Args: None
-  # Returns: None
-  # -------------------------------------------------------------------------------------------------------------------
-  @classmethod
-  def BeginForegroundProcess(cls):
-    return None,None
-
-  # -------------------------------------------------------------------------------------------------------------------
-  # Take the terminal back from a foreground process: Nothing to do on windows
-  # Args:
-  # - State (dict): Signal dispositions returned by BeginForegroundProcess
-  # Returns: None
-  # -------------------------------------------------------------------------------------------------------------------
-  @classmethod
-  def EndForegroundProcess(cls,State):
-    pass
-
-  # -------------------------------------------------------------------------------------------------------------------
   # Return True if there are pending key-down events in the console input buffer without consuming them
   # Uses PeekConsoleInputW to inspect queued events and applies the same filters as ReadKey
   # Args: None
@@ -923,7 +904,7 @@ def RestoreTerminalMode():
 # ---------------------------------------------------------------------------------------------------------------------
 def BeginForegroundProcess():
   if IS_WINDOWS:
-    return TerminalInputWindows.BeginForegroundProcess()
+    return None,None
   else:
     return TerminalInputUnix.BeginForegroundProcess()
 
@@ -936,7 +917,7 @@ def BeginForegroundProcess():
 # ---------------------------------------------------------------------------------------------------------------------
 def EndForegroundProcess(State):
   if IS_WINDOWS:
-    TerminalInputWindows.EndForegroundProcess(State)
+    pass
   else:
     TerminalInputUnix.EndForegroundProcess(State)
 
