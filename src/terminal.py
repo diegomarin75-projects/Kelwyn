@@ -5,6 +5,8 @@
 # Functions in ths library:
 # - SetRawTerminalMode()                      #Disables line buffering,echo,and Ctrl+C handling
 # - RestoreTerminalMode()                     #Restores terminal mode saved by SetRawTerminalMode
+# - State,Reset=BeginForegroundProcess()      #Gives the terminal to a foreground process,returns signal state and child reset
+# - EndForegroundProcess(State)               #Takes the terminal back (raw mode,previous signal dispositions)
 # - KeyEvent=ReadKey()                        #Returns next key-down event,blocking until available
 # - bool=IsKeyboardHit()                      #Returns True if there are pending keystrokes in the buffer
 # - Write(Data)                               #Writes str or bytes to terminal output
@@ -23,6 +25,7 @@ import time
 import ansi
 import shutil
 import platform
+import signal
 import subprocess
 from dataclasses import dataclass
 if platform.system()=="Windows":
@@ -315,8 +318,6 @@ class TerminalInputWindows:
   @classmethod
   def SetRawTerminalMode(cls):
     Handle=cls._GetHandle()
-    cls.SavedMode=ctypes.c_ulong(0)
-    windll.kernel32.GetConsoleMode(Handle,byref(cls.SavedMode))
     windll.kernel32.SetConsoleMode(Handle,ctypes.c_ulong(0))
 
   # -------------------------------------------------------------------------------------------------------------------
@@ -328,6 +329,25 @@ class TerminalInputWindows:
   def RestoreTerminalMode(cls):
     if cls.SavedMode is not None:
       windll.kernel32.SetConsoleMode(cls._GetHandle(),cls.SavedMode)
+
+  # -------------------------------------------------------------------------------------------------------------------
+  # Give the terminal to a foreground process: Nothing to do on windows
+  # Args: None
+  # Returns: None
+  # -------------------------------------------------------------------------------------------------------------------
+  @classmethod
+  def BeginForegroundProcess(cls):
+    return None,None
+
+  # -------------------------------------------------------------------------------------------------------------------
+  # Take the terminal back from a foreground process: Nothing to do on windows
+  # Args:
+  # - State (dict): Signal dispositions returned by BeginForegroundProcess
+  # Returns: None
+  # -------------------------------------------------------------------------------------------------------------------
+  @classmethod
+  def EndForegroundProcess(cls,State):
+    pass
 
   # -------------------------------------------------------------------------------------------------------------------
   # Return True if there are pending key-down events in the console input buffer without consuming them
@@ -487,6 +507,11 @@ class TerminalInputUnix:
 
   #Saved terminal settings for restoration
   SavedTermios=None
+
+  #Signals the terminal delivers to the whole foreground process group while a foreground process
+  #runs (Ctrl+C,Ctrl+\). The shell must ignore them while the child runs,otherwise shell and child
+  #would both react to them.
+  ForegroundSignals=[Signal for Signal in (signal.SIGINT,getattr(signal,"SIGQUIT",None)) if Signal!=None]
 
   #Keystrokes consumed from stdin while searching for a cursor position report (DSR)
   #response.They are pushed back here so ReadKey/IsKeyboardHit read them in order.
@@ -674,8 +699,16 @@ class TerminalInputUnix:
   @classmethod
   def SetRawTerminalMode(cls):
     Fd=sys.stdin.fileno()
-    cls.SavedTermios=termios.tcgetattr(Fd)
-    tty.setraw(Fd)
+
+    #Only the first settings are saved: raw mode is toggled around foreground processes,
+    #so a terminal state left behind by a child must never become the state restored
+    #when the shell exits.
+    if cls.SavedTermios is None:
+      cls.SavedTermios=termios.tcgetattr(Fd)
+
+    #TCSADRAIN instead of the TCSAFLUSH default of tty.setraw so keystrokes typed ahead
+    #(for a foreground process or for the next command) are not discarded.
+    tty.setraw(Fd,termios.TCSADRAIN)
 
     #tty.setraw() clears OPOST,disabling ONLCR output translation (\n → \r\n),
     #so newlines would not return the cursor to column 1. Re-enable it so line
@@ -693,6 +726,47 @@ class TerminalInputUnix:
   def RestoreTerminalMode(cls):
     if cls.SavedTermios is not None:
       termios.tcsetattr(sys.stdin.fileno(),termios.TCSADRAIN,cls.SavedTermios)
+
+  # -------------------------------------------------------------------------------------------------------------------
+  # Give the terminal to a foreground process: ignore the process group signals for the shell and
+  # leave raw mode so the child gets its normal tty settings (echo,line buffering,Ctrl+C handling)
+  # Args: None
+  # Returns:
+  # - tuple: (State,Reset): previous signal dispositions (pass to EndForegroundProcess) and child
+  #   process reset for preexec_fn
+  # -------------------------------------------------------------------------------------------------------------------
+  @classmethod
+  def BeginForegroundProcess(cls):
+    State={Signal:signal.signal(Signal,signal.SIG_IGN) for Signal in cls.ForegroundSignals}
+    cls.RestoreTerminalMode()
+    return State,cls.ForegroundChildReset
+
+  # -------------------------------------------------------------------------------------------------------------------
+  # Take the terminal back from a foreground process: restore raw mode and the previous
+  # signal dispositions
+  # Args:
+  # - State (dict): Signal dispositions returned by BeginForegroundProcess
+  # Returns: None
+  # -------------------------------------------------------------------------------------------------------------------
+  @classmethod
+  def EndForegroundProcess(cls,State):
+    if State!=None:
+      try:
+        cls.SetRawTerminalMode()
+      finally:
+        for Signal,Disposition in State.items():
+          signal.signal(Signal,Disposition)
+
+  # -------------------------------------------------------------------------------------------------------------------
+  # Restore the default disposition of the foreground signals in a child process (used as preexec_fn):
+  # ignored dispositions survive fork+exec and would make Ctrl+C/Ctrl+\ unreachable for the child
+  # Args: None
+  # Returns: None
+  # -------------------------------------------------------------------------------------------------------------------
+  @classmethod
+  def ForegroundChildReset(cls):
+    for Signal in cls.ForegroundSignals:
+      signal.signal(Signal,signal.SIG_DFL)
 
   # -------------------------------------------------------------------------------------------------------------------
   # Return True if there are bytes waiting on stdin without consuming them
@@ -838,6 +912,33 @@ def RestoreTerminalMode():
     TerminalInputWindows.RestoreTerminalMode()
   else:
     TerminalInputUnix.RestoreTerminalMode()
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Give the terminal to a foreground process: switch out of raw mode so the process gets its normal
+# input handling and ignore the signals the terminal delivers for it,so only the child reacts
+# Args: None
+# Returns:
+# - tuple: (State,Reset): previous signal dispositions (pass to EndForegroundProcess) and child
+#   process reset for preexec_fn (None when not needed)
+# ---------------------------------------------------------------------------------------------------------------------
+def BeginForegroundProcess():
+  if IS_WINDOWS:
+    return TerminalInputWindows.BeginForegroundProcess()
+  else:
+    return TerminalInputUnix.BeginForegroundProcess()
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Take the terminal back from a foreground process: switch back to raw mode and restore the signal
+# dispositions saved by BeginForegroundProcess
+# Args:
+# - State (dict): Signal dispositions returned by BeginForegroundProcess
+# Returns: None
+# ---------------------------------------------------------------------------------------------------------------------
+def EndForegroundProcess(State):
+  if IS_WINDOWS:
+    TerminalInputWindows.EndForegroundProcess(State)
+  else:
+    TerminalInputUnix.EndForegroundProcess(State)
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Return a KeyEvent for the next key-down event,blocking until one is available
