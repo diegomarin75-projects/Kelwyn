@@ -81,7 +81,7 @@ def StartShell(MainFilePath,Version,Args):
     DebugLogFile=Args.DebugLogFile
   elif "debug_log_file" in config.Get():
     DebugLogFile=config.Get()["debug_log_file"]
-  if const.DEBUG_LOG_VAR_NAME in os.environ:
+  elif const.DEBUG_LOG_VAR_NAME in os.environ:
     DebugLogFile=os.environ[const.DEBUG_LOG_VAR_NAME]
   else:
     DebugLogFile=Path(os.path.dirname(os.path.abspath(MainFilePath))).parent / const.DEBUG_LOG_FILE
